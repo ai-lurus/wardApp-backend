@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  name          String
+  role          String   @default("operator")
+  active        Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  movements InventoryMovement[] @relation("CreatedByUser")
+
+  @@map("users")
+}
+
+model MaterialCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  materials Material[]
+
+  @@map("material_categories")
+}
+
+model Material {
+  id              String   @id @default(uuid())
+  name            String
+  category_id     String
+  unit            String   @default("pieza")
+  reference_price Float?
+  min_stock       Int      @default(0)
+  current_stock   Int      @default(0)
+  active          Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  category  MaterialCategory    @relation(fields: [category_id], references: [id])
+  movements InventoryMovement[]
+
+  @@map("materials")
+}
+
+enum MovementType {
+  entry
+  exit
+}
+
+model InventoryMovement {
+  id             String       @id @default(uuid())
+  material_id    String
+  type           MovementType
+  quantity       Int
+  unit_cost      Float?
+  total_cost     Float?
+  supplier       String?
+  invoice_number String?
+  destination    String?
+  reason         String?
+  notes          String?
+  created_by     String
+  movement_date  DateTime     @default(now())
+  created_at     DateTime     @default(now())
+
+  material Material @relation(fields: [material_id], references: [id])
+  user     User     @relation("CreatedByUser", fields: [created_by], references: [id])
+
+  @@map("inventory_movements")
+}
