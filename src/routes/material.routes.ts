@@ -46,6 +46,46 @@ router.post(
   }
 );
 
+// PUT /api/materials/categories/:id
+const updateCategorySchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+});
+
+router.put(
+  "/categories/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const body = updateCategorySchema.parse(req.body);
+      const category = await materialService.updateCategory(
+        req.params.id,
+        body.name,
+        body.description
+      );
+      res.json(category);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        next(new AppError(400, "Invalid request body"));
+      } else {
+        next(err);
+      }
+    }
+  }
+);
+
+// DELETE /api/materials/categories/:id
+router.delete(
+  "/categories/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await materialService.deleteCategory(req.params.id);
+      res.json({ message: "Category deleted" });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // GET /api/materials
 router.get(
   "/",
@@ -82,6 +122,9 @@ router.get(
 // POST /api/materials
 const createMaterialSchema = z.object({
   name: z.string().min(1),
+  sku: z.string().max(20).optional(),
+  location: z.string().optional(),
+  zone_id: z.string().uuid().nullable().optional(),
   category_id: z.string().uuid(),
   unit: z.string().optional(),
   reference_price: z.number().positive().optional(),
@@ -109,6 +152,9 @@ router.post(
 // PUT /api/materials/:id
 const updateMaterialSchema = z.object({
   name: z.string().min(1).optional(),
+  sku: z.string().max(20).optional(),
+  location: z.string().optional(),
+  zone_id: z.string().uuid().nullable().optional(),
   category_id: z.string().uuid().optional(),
   unit: z.string().optional(),
   reference_price: z.number().positive().optional(),

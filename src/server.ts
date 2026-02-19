@@ -6,6 +6,9 @@ import { tenantMiddleware } from "./middleware/tenant";
 import { authRoutes } from "./routes/auth.routes";
 import { materialRoutes } from "./routes/material.routes";
 import { inventoryRoutes } from "./routes/inventory.routes";
+import { dashboardRoutes } from "./routes/dashboard.routes";
+import { userRoutes } from "./routes/user.routes";
+import { warehouseRoutes } from "./routes/warehouse.routes";
 
 const app = express();
 
@@ -28,6 +31,9 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/warehouse", warehouseRoutes);
 
 // Error handler
 app.use(errorHandler);

@@ -12,7 +12,7 @@ model User {
   email         String   @unique
   password_hash String
   name          String
-  role          String   @default("operator")
+  role          String   @default("almacenista")
   active        Boolean  @default(true)
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
@@ -37,7 +37,10 @@ model MaterialCategory {
 model Material {
   id              String   @id @default(uuid())
   name            String
+  sku             String?  @unique
+  location        String?
   category_id     String
+  zone_id         String?
   unit            String   @default("pieza")
   reference_price Float?
   min_stock       Int      @default(0)
@@ -47,9 +50,39 @@ model Material {
   updated_at      DateTime @updatedAt
 
   category  MaterialCategory    @relation(fields: [category_id], references: [id])
+  zone      WarehouseZone?      @relation(fields: [zone_id], references: [id], onDelete: SetNull)
   movements InventoryMovement[]
 
   @@map("materials")
+}
+
+model WarehouseConfig {
+  id         String          @id @default(uuid())
+  width_m    Float           @default(50)
+  height_m   Float           @default(30)
+  updated_at DateTime        @updatedAt
+  zones      WarehouseZone[]
+
+  @@map("warehouse_config")
+}
+
+model WarehouseZone {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  x_pct       Float
+  y_pct       Float
+  w_pct       Float
+  h_pct       Float
+  color       String          @default("#4CAF50")
+  config_id   String
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+
+  config    WarehouseConfig @relation(fields: [config_id], references: [id], onDelete: Cascade)
+  materials Material[]
+
+  @@map("warehouse_zones")
 }
 
 enum MovementType {
