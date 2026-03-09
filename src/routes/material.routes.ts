@@ -7,12 +7,12 @@ import { AppError } from "../middleware/errorHandler";
 const router = Router();
 router.use(authMiddleware);
 
-// GET /api/materials/categories - must be before /:id
+// GET /api/materials/categories
 router.get(
   "/categories",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const categories = await materialService.listCategories();
+      const categories = await materialService.listCategories(req.user!.companyId);
       res.json(categories);
     } catch (err) {
       next(err);
@@ -32,6 +32,7 @@ router.post(
     try {
       const body = createCategorySchema.parse(req.body);
       const category = await materialService.createCategory(
+        req.user!.companyId,
         body.name,
         body.description
       );
@@ -59,6 +60,7 @@ router.put(
       const body = updateCategorySchema.parse(req.body);
       const category = await materialService.updateCategory(
         req.params.id,
+        req.user!.companyId,
         body.name,
         body.description
       );
@@ -78,7 +80,7 @@ router.delete(
   "/categories/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await materialService.deleteCategory(req.params.id);
+      await materialService.deleteCategory(req.params.id, req.user!.companyId);
       res.json({ message: "Category deleted" });
     } catch (err) {
       next(err);
@@ -93,6 +95,7 @@ router.get(
     try {
       const { category_id, active, search, page, limit } = req.query;
       const result = await materialService.listMaterials({
+        companyId: req.user!.companyId,
         category_id: category_id as string,
         active: active !== undefined ? active === "true" : undefined,
         search: search as string,
@@ -111,7 +114,7 @@ router.get(
   "/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const material = await materialService.getMaterial(req.params.id);
+      const material = await materialService.getMaterial(req.params.id, req.user!.companyId);
       res.json(material);
     } catch (err) {
       next(err);
@@ -137,7 +140,10 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const body = createMaterialSchema.parse(req.body);
-      const material = await materialService.createMaterial(body);
+      const material = await materialService.createMaterial({
+        companyId: req.user!.companyId,
+        ...body,
+      });
       res.status(201).json(material);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -169,6 +175,7 @@ router.put(
       const body = updateMaterialSchema.parse(req.body);
       const material = await materialService.updateMaterial(
         req.params.id,
+        req.user!.companyId,
         body
       );
       res.json(material);
@@ -187,7 +194,7 @@ router.delete(
   "/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await materialService.deleteMaterial(req.params.id);
+      await materialService.deleteMaterial(req.params.id, req.user!.companyId);
       res.json({ message: "Material deactivated" });
     } catch (err) {
       next(err);

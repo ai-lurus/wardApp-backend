@@ -8,6 +8,7 @@ declare global {
       user?: {
         userId: string;
         role: string;
+        companyId: string;
       };
     }
   }
@@ -31,8 +32,9 @@ export function authMiddleware(
     const payload = jwt.verify(token, env.JWT_SECRET) as {
       userId: string;
       role: string;
+      companyId: string;
     };
-    req.user = { userId: payload.userId, role: payload.role };
+    req.user = { userId: payload.userId, role: payload.role, companyId: payload.companyId };
     next();
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });

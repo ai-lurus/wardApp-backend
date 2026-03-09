@@ -10,9 +10,9 @@ router.use(authMiddleware);
 router.use(requireRole("admin"));
 
 // GET /api/users
-router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const users = await userService.listUsers();
+    const users = await userService.listUsers(req.user!.companyId);
     res.json(users);
   } catch (err) {
     next(err);
@@ -30,7 +30,10 @@ const createUserSchema = z.object({
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = createUserSchema.parse(req.body);
-    const user = await userService.createUser(body);
+    const user = await userService.createUser({
+      companyId: req.user!.companyId,
+      ...body,
+    });
     res.status(201).json(user);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -52,7 +55,7 @@ const updateUserSchema = z.object({
 router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = updateUserSchema.parse(req.body);
-    const user = await userService.updateUser(req.params.id, body);
+    const user = await userService.updateUser(req.params.id, req.user!.companyId, body);
     res.json(user);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -74,7 +77,7 @@ router.patch("/:id/status", async (req: Request, res: Response, next: NextFuncti
       return next(new AppError(400, "No puedes desactivar tu propia cuenta"));
     }
     const { active } = statusSchema.parse(req.body);
-    const user = await userService.setUserStatus(req.params.id, active);
+    const user = await userService.setUserStatus(req.params.id, req.user!.companyId, active);
     res.json(user);
   } catch (err) {
     if (err instanceof z.ZodError) {

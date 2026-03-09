@@ -10,9 +10,9 @@ router.use(authMiddleware);
 // GET /api/warehouse/config
 router.get(
   "/config",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const config = await warehouseService.getOrCreateConfig();
+      const config = await warehouseService.getOrCreateConfig(req.user!.companyId);
       res.json(config);
     } catch (err) {
       next(err);
@@ -31,7 +31,7 @@ router.put(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const body = updateConfigSchema.parse(req.body);
-      const config = await warehouseService.updateConfig(body);
+      const config = await warehouseService.updateConfig(req.user!.companyId, body);
       res.json(config);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -46,9 +46,9 @@ router.put(
 // GET /api/warehouse/zones
 router.get(
   "/zones",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const zones = await warehouseService.listZones();
+      const zones = await warehouseService.listZones(req.user!.companyId);
       res.json(zones);
     } catch (err) {
       next(err);
@@ -72,7 +72,7 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const body = createZoneSchema.parse(req.body);
-      const zone = await warehouseService.createZone(body);
+      const zone = await warehouseService.createZone(req.user!.companyId, body);
       res.status(201).json(zone);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -100,7 +100,7 @@ router.put(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const body = updateZoneSchema.parse(req.body);
-      const zone = await warehouseService.updateZone(req.params.id, body);
+      const zone = await warehouseService.updateZone(req.params.id, req.user!.companyId, body);
       res.json(zone);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -117,7 +117,7 @@ router.delete(
   "/zones/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await warehouseService.deleteZone(req.params.id);
+      await warehouseService.deleteZone(req.params.id, req.user!.companyId);
       res.json({ message: "Zone deleted" });
     } catch (err) {
       next(err);
@@ -128,9 +128,9 @@ router.delete(
 // GET /api/warehouse/map
 router.get(
   "/map",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const map = await warehouseService.getMap();
+      const map = await warehouseService.getMap(req.user!.companyId);
       res.json(map);
     } catch (err) {
       next(err);

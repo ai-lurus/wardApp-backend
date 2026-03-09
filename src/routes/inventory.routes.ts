@@ -24,6 +24,7 @@ router.post(
     try {
       const body = entrySchema.parse(req.body);
       const movement = await inventoryService.registerEntry({
+        companyId: req.user!.companyId,
         ...body,
         created_by: req.user!.userId,
       });
@@ -53,6 +54,7 @@ router.post(
     try {
       const body = exitSchema.parse(req.body);
       const movement = await inventoryService.registerExit({
+        companyId: req.user!.companyId,
         ...body,
         created_by: req.user!.userId,
       });
@@ -74,6 +76,7 @@ router.get(
     try {
       const { type, material_id, page, limit } = req.query;
       const result = await inventoryService.listMovements({
+        companyId: req.user!.companyId,
         type: type as MovementType | undefined,
         material_id: material_id as string,
         page: page ? Number(page) : undefined,
@@ -92,7 +95,7 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const lowStock = req.query.low_stock === "true";
-      const stock = await inventoryService.getStock(lowStock);
+      const stock = await inventoryService.getStock(req.user!.companyId, lowStock);
       res.json(stock);
     } catch (err) {
       next(err);
@@ -103,9 +106,9 @@ router.get(
 // GET /api/inventory/alerts
 router.get(
   "/alerts",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const alerts = await inventoryService.getAlerts();
+      const alerts = await inventoryService.getAlerts(req.user!.companyId);
       res.json(alerts);
     } catch (err) {
       next(err);

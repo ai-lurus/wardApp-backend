@@ -1,9 +1,9 @@
-import { PrismaClient, MovementType } from "@prisma/client";
+import { MovementType } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 
 interface EntryData {
+  companyId: string;
   material_id: string;
   quantity: number;
   unit_cost?: number;
@@ -14,20 +14,20 @@ interface EntryData {
 }
 
 export async function registerEntry(data: EntryData) {
-  const material = await prisma.material.findUnique({
-    where: { id: data.material_id },
-  });
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${data.companyId}, true)`;
 
-  if (!material || !material.active) {
-    throw new AppError(404, "Material not found");
-  }
+    const material = await tx.material.findFirst({
+      where: { id: data.material_id, company_id: data.companyId },
+    });
+    if (!material || !material.active) throw new AppError(404, "Material not found");
 
-  const total_cost =
-    data.unit_cost != null ? data.unit_cost * data.quantity : undefined;
+    const total_cost =
+      data.unit_cost != null ? data.unit_cost * data.quantity : undefined;
 
-  const [movement] = await prisma.$transaction([
-    prisma.inventoryMovement.create({
+    const movement = await tx.inventoryMovement.create({
       data: {
+        company_id: data.companyId,
         material_id: data.material_id,
         type: MovementType.entry,
         quantity: data.quantity,
@@ -39,17 +39,19 @@ export async function registerEntry(data: EntryData) {
         created_by: data.created_by,
       },
       include: { material: true },
-    }),
-    prisma.material.update({
+    });
+
+    await tx.material.update({
       where: { id: data.material_id },
       data: { current_stock: { increment: data.quantity } },
-    }),
-  ]);
+    });
 
-  return movement;
+    return movement;
+  });
 }
 
 interface ExitData {
+  companyId: string;
   material_id: string;
   quantity: number;
   destination?: string;
@@ -59,24 +61,24 @@ interface ExitData {
 }
 
 export async function registerExit(data: ExitData) {
-  const material = await prisma.material.findUnique({
-    where: { id: data.material_id },
-  });
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${data.companyId}, true)`;
 
-  if (!material || !material.active) {
-    throw new AppError(404, "Material not found");
-  }
+    const material = await tx.material.findFirst({
+      where: { id: data.material_id, company_id: data.companyId },
+    });
+    if (!material || !material.active) throw new AppError(404, "Material not found");
 
-  if (material.current_stock < data.quantity) {
-    throw new AppError(
-      400,
-      `Insufficient stock. Available: ${material.current_stock}, requested: ${data.quantity}`
-    );
-  }
+    if (material.current_stock < data.quantity) {
+      throw new AppError(
+        400,
+        `Insufficient stock. Available: ${material.current_stock}, requested: ${data.quantity}`
+      );
+    }
 
-  const [movement] = await prisma.$transaction([
-    prisma.inventoryMovement.create({
+    const movement = await tx.inventoryMovement.create({
       data: {
+        company_id: data.companyId,
         material_id: data.material_id,
         type: MovementType.exit,
         quantity: data.quantity,
@@ -86,17 +88,19 @@ export async function registerExit(data: ExitData) {
         created_by: data.created_by,
       },
       include: { material: true },
-    }),
-    prisma.material.update({
+    });
+
+    await tx.material.update({
       where: { id: data.material_id },
       data: { current_stock: { decrement: data.quantity } },
-    }),
-  ]);
+    });
 
-  return movement;
+    return movement;
+  });
 }
 
 interface ListMovementsParams {
+  companyId: string;
   type?: MovementType;
   material_id?: string;
   page?: number;
@@ -104,58 +108,54 @@ interface ListMovementsParams {
 }
 
 export async function listMovements(params: ListMovementsParams) {
-  const { type, material_id, page = 0, limit = 25 } = params;
+  const { companyId, type, material_id, page = 0, limit = 25 } = params;
 
-  const where: any = {};
+  const where: any = { company_id: companyId };
   if (type) where.type = type;
   if (material_id) where.material_id = material_id;
 
-  const [items, count] = await Promise.all([
-    prisma.inventoryMovement.findMany({
-      where,
-      include: {
-        material: { select: { name: true, unit: true } },
-        user: { select: { name: true } },
-      },
-      skip: page * limit,
-      take: limit,
-      orderBy: { created_at: "desc" },
-    }),
-    prisma.inventoryMovement.count({ where }),
-  ]);
-
-  return { items, count, page, limit };
-}
-
-export async function getStock(lowStockOnly?: boolean) {
-  const where: any = { active: true };
-
-  const materials = await prisma.material.findMany({
-    where,
-    include: { category: { select: { name: true } } },
-    orderBy: { name: "asc" },
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+    const [items, count] = await Promise.all([
+      tx.inventoryMovement.findMany({
+        where,
+        include: {
+          material: { select: { name: true, unit: true } },
+          user: { select: { name: true } },
+        },
+        skip: page * limit,
+        take: limit,
+        orderBy: { created_at: "desc" },
+      }),
+      tx.inventoryMovement.count({ where }),
+    ]);
+    return { items, count, page, limit };
   });
-
-  if (lowStockOnly) {
-    return materials.filter((m) => m.current_stock <= m.min_stock);
-  }
-
-  return materials;
 }
 
-export async function getAlerts() {
-  return prisma.material.findMany({
-    where: {
-      active: true,
-    },
-    include: { category: { select: { name: true } } },
-    orderBy: { name: "asc" },
-  }).then((materials) =>
-    materials
+export async function getStock(companyId: string, lowStockOnly?: boolean) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+    const materials = await tx.material.findMany({
+      where: { company_id: companyId, active: true },
+      include: { category: { select: { name: true } } },
+      orderBy: { name: "asc" },
+    });
+    if (lowStockOnly) return materials.filter((m) => m.current_stock <= m.min_stock);
+    return materials;
+  });
+}
+
+export async function getAlerts(companyId: string) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+    const materials = await tx.material.findMany({
+      where: { company_id: companyId, active: true },
+      include: { category: { select: { name: true } } },
+      orderBy: { name: "asc" },
+    });
+    return materials
       .filter((m) => m.current_stock <= m.min_stock)
-      .map((m) => ({
-        ...m,
-        deficit: m.min_stock - m.current_stock,
-      }))
-  );
+      .map((m) => ({ ...m, deficit: m.min_stock - m.current_stock }));
+  });
 }

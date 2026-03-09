@@ -8,9 +8,9 @@ router.use(authMiddleware);
 // GET /api/dashboard/stats
 router.get(
   "/stats",
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const stats = await getDashboardStats();
+      const stats = await getDashboardStats(req.user!.companyId);
       res.json(stats);
     } catch (err) {
       next(err);
