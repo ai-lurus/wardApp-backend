@@ -179,7 +179,7 @@ export async function deleteCategory(id: string, companyId: string) {
     if (existing._count.materials > 0) {
       throw new AppError(
         409,
-        `Cannot delete category with ${existing._count.materials} associated material(s)`
+        `No se puede eliminar la categoría porque está asociada a ${existing._count.materials} material(es)`
       );
     }
     return tx.materialCategory.delete({ where: { id } });
