@@ -9,6 +9,8 @@ import { dashboardRoutes } from "./routes/dashboard.routes";
 import { userRoutes } from "./routes/user.routes";
 import { warehouseRoutes } from "./routes/warehouse.routes";
 import { adminRoutes } from "./routes/admin.routes";
+import { billingRoutes } from "./routes/billing.routes";
+import { uploadRoutes } from "./routes/upload.routes";
 
 const app = express();
 
@@ -19,6 +21,10 @@ app.use(
     credentials: true,
   })
 );
+
+// Stripe webhook needs raw body
+app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
+
 app.use(express.json());
 
 // Health check
@@ -34,6 +40,8 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/billing", billingRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Error handler
 app.use(errorHandler);

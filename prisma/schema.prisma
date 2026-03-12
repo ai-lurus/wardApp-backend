@@ -21,6 +21,11 @@ model Company {
   movements  InventoryMovement[]
   warehouses WarehouseConfig[]
 
+  stripe_customer_id     String?
+  stripe_subscription_id String?
+  subscription_status    String?
+  active_modules         String[] @default(["inventario"])
+
   @@map("companies")
 }
 
@@ -82,6 +87,7 @@ model Material {
   reference_price Float?
   min_stock       Int      @default(0)
   current_stock   Int      @default(0)
+  image_url       String?
   active          Boolean  @default(true)
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt

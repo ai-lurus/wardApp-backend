@@ -64,6 +64,7 @@ const updateCompanySchema = z.object({
   name: z.string().min(1).optional(),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/).optional(),
   active: z.boolean().optional(),
+  active_modules: z.array(z.string()).optional(),
 });
 
 // PATCH /api/admin/companies/:id

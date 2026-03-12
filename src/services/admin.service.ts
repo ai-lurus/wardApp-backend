@@ -8,6 +8,7 @@ const COMPANY_SELECT = {
   name: true,
   slug: true,
   active: true,
+  active_modules: true,
   created_at: true,
 } as const;
 
@@ -94,7 +95,7 @@ export async function createCompany(data: {
 
 export async function updateCompany(
   id: string,
-  data: { name?: string; slug?: string; active?: boolean }
+  data: { name?: string; slug?: string; active?: boolean; active_modules?: string[] }
 ) {
   const company = await prisma.company.findUnique({ where: { id } });
   if (!company) throw new AppError(404, "Company not found");

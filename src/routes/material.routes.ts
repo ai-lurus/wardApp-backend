@@ -133,6 +133,7 @@ const createMaterialSchema = z.object({
   reference_price: z.number().positive().optional(),
   min_stock: z.number().int().min(0).optional(),
   current_stock: z.number().int().min(0).optional(),
+  image_url: z.string().optional(),
 });
 
 router.post(
@@ -166,6 +167,7 @@ const updateMaterialSchema = z.object({
   reference_price: z.number().positive().optional(),
   min_stock: z.number().int().min(0).optional(),
   active: z.boolean().optional(),
+  image_url: z.string().optional(),
 });
 
 router.put(

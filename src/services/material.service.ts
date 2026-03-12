@@ -61,6 +61,7 @@ interface CreateMaterialData {
   reference_price?: number;
   min_stock?: number;
   current_stock?: number;
+  image_url?: string;
 }
 
 export async function createMaterial(data: CreateMaterialData) {
@@ -90,6 +91,7 @@ interface UpdateMaterialData {
   reference_price?: number;
   min_stock?: number;
   active?: boolean;
+  image_url?: string;
 }
 
 export async function updateMaterial(id: string, companyId: string, data: UpdateMaterialData) {

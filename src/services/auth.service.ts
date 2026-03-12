@@ -7,7 +7,10 @@ import { prisma } from "../lib/prisma";
 import { sendPasswordResetEmail } from "./email.service";
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { company: true }
+  });
 
   if (!user || !user.active) {
     throw new AppError(401, "Invalid credentials");
@@ -32,6 +35,12 @@ export async function login(email: string, password: string) {
       name: user.name,
       role: user.role,
       companyId: user.company_id,
+      company: {
+        id: user.company.id,
+        name: user.company.name,
+        active_modules: user.company.active_modules,
+        subscription_status: user.company.subscription_status,
+      }
     },
   };
 }
@@ -104,6 +113,14 @@ export async function getMe(userId: string, companyId: string) {
         active: true,
         company_id: true,
         created_at: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+            active_modules: true,
+            subscription_status: true,
+          }
+        }
       },
     });
     if (!user || !user.active) throw new AppError(404, "User not found");
