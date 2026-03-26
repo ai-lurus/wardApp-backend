@@ -5,6 +5,11 @@ export const stripe = env.STRIPE_SECRET_KEY
     ? new Stripe(env.STRIPE_SECRET_KEY, { apiVersion: '2026-02-25.clover' as any })
     : null;
 
+// Map module IDs to their Stripe Price IDs
+const MODULE_PRICE_IDS: Record<string, string> = {
+    inventario: 'price_1TEkTEBsGIJ0ttMx1AzERkGE',
+};
+
 export const createCheckoutSession = async (
     companyId: string,
     modules: string[],
@@ -13,35 +18,20 @@ export const createCheckoutSession = async (
 ) => {
     if (!stripe) throw new Error('Stripe is not configured');
 
-    // Typically, you would map "modules" to specific Stripe Price IDs.
-    // For the MVP, we just create a standard subscription or a dummy price.
-    // In a real scenario, map "modules" array to line_items.
-    const lineItems = modules.map(() => ({
-        price_data: {
-            currency: 'usd',
-            product_data: { name: 'Suscripción Ward App' },
-            unit_amount: 5000, // $50.00
-            recurring: { interval: 'month' as Stripe.Checkout.SessionCreateParams.LineItem.PriceData.Recurring.Interval },
-        },
-        quantity: 1,
-    }));
+    const lineItems = modules
+        .filter((mod) => MODULE_PRICE_IDS[mod])
+        .map((mod) => ({ price: MODULE_PRICE_IDS[mod], quantity: 1 }));
+
+    if (lineItems.length === 0) {
+        throw new Error('No hay módulos válidos para suscribir');
+    }
 
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'subscription',
         client_reference_id: companyId,
         metadata: { companyId, modules: modules.join(',') },
-        line_items: lineItems.length > 0 ? lineItems : [
-            {
-                price_data: {
-                    currency: 'usd',
-                    product_data: { name: 'Módulo Base' },
-                    unit_amount: 3000,
-                    recurring: { interval: 'month' },
-                },
-                quantity: 1,
-            }
-        ],
+        line_items: lineItems,
         success_url: successUrl,
         cancel_url: cancelUrl,
     });

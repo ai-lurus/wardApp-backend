@@ -3,10 +3,12 @@ import { z } from "zod";
 import { MovementType } from "@prisma/client";
 import * as inventoryService from "../services/inventory.service";
 import { authMiddleware } from "../middleware/auth";
+import { checkModuleAccess } from "../middleware/tenant";
 import { AppError } from "../middleware/errorHandler";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(checkModuleAccess("inventario"));
 
 // POST /api/inventory/entry
 const entrySchema = z.object({

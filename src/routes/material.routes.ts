@@ -2,10 +2,12 @@ import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as materialService from "../services/material.service";
 import { authMiddleware } from "../middleware/auth";
+import { checkModuleAccess } from "../middleware/tenant";
 import { AppError } from "../middleware/errorHandler";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(checkModuleAccess("inventario"));
 
 // GET /api/materials/categories
 router.get(

@@ -127,7 +127,28 @@ router.post(
                     const customerId = subscription.customer as string;
                     const status = subscription.status;
 
-                    // Find company by customer ID
+                    const company = await prisma.company.findFirst({
+                        where: { stripe_customer_id: customerId }
+                    });
+
+                    if (company) {
+                        const isActive = status === "active" || status === "trialing";
+                        await prisma.company.update({
+                            where: { id: company.id },
+                            data: {
+                                subscription_status: status,
+                                stripe_subscription_id: subscription.id,
+                                // Revoke paid modules when subscription is no longer active
+                                active_modules: isActive ? company.active_modules : ["inventario"],
+                            }
+                        });
+                    }
+                    break;
+                }
+                case "invoice.payment_failed": {
+                    const invoice = event.data.object as Stripe.Invoice;
+                    const customerId = invoice.customer as string;
+
                     const company = await prisma.company.findFirst({
                         where: { stripe_customer_id: customerId }
                     });
@@ -135,12 +156,7 @@ router.post(
                     if (company) {
                         await prisma.company.update({
                             where: { id: company.id },
-                            data: {
-                                subscription_status: status,
-                                stripe_subscription_id: subscription.id,
-                                // if status != active and != trailing, we might remove all non-free modules?
-                                // active_modules: status === 'active' ? company.active_modules : ['inventario']
-                            }
+                            data: { subscription_status: "past_due" }
                         });
                     }
                     break;
