@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Company {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid()) @db.Uuid
   name       String
   slug       String   @unique
   active     Boolean  @default(true)
@@ -30,8 +30,8 @@ model Company {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  company_id    String
+  id            String   @id @default(uuid()) @db.Uuid
+  company_id    String   @db.Uuid
   email         String   @unique
   password_hash String
   name          String
@@ -48,8 +48,8 @@ model User {
 }
 
 model PasswordResetToken {
-  id         String   @id @default(uuid())
-  user_id    String
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
   token      String   @unique
   expires_at DateTime
   used       Boolean  @default(false)
@@ -61,8 +61,8 @@ model PasswordResetToken {
 }
 
 model MaterialCategory {
-  id          String   @id @default(uuid())
-  company_id  String
+  id          String   @id @default(uuid()) @db.Uuid
+  company_id  String   @db.Uuid
   name        String
   description String?
   created_at  DateTime @default(now())
@@ -76,13 +76,13 @@ model MaterialCategory {
 }
 
 model Material {
-  id              String   @id @default(uuid())
-  company_id      String
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
   name            String
   sku             String?
   location        String?
-  category_id     String
-  zone_id         String?
+  category_id     String   @db.Uuid
+  zone_id         String?  @db.Uuid
   unit            String   @default("pieza")
   reference_price Float?
   min_stock       Int      @default(0)
@@ -102,8 +102,8 @@ model Material {
 }
 
 model WarehouseConfig {
-  id         String          @id @default(uuid())
-  company_id String
+  id         String          @id @default(uuid()) @db.Uuid
+  company_id String          @db.Uuid
   width_m    Float           @default(50)
   height_m   Float           @default(30)
   updated_at DateTime        @updatedAt
@@ -115,7 +115,7 @@ model WarehouseConfig {
 }
 
 model WarehouseZone {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
   description String?
   x_pct       Float
@@ -123,7 +123,7 @@ model WarehouseZone {
   w_pct       Float
   h_pct       Float
   color       String   @default("#4CAF50")
-  config_id   String
+  config_id   String   @db.Uuid
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -139,9 +139,9 @@ enum MovementType {
 }
 
 model InventoryMovement {
-  id             String       @id @default(uuid())
-  company_id     String
-  material_id    String
+  id             String       @id @default(uuid()) @db.Uuid
+  company_id     String       @db.Uuid
+  material_id    String       @db.Uuid
   type           MovementType
   quantity       Int
   unit_cost      Float?
@@ -151,7 +151,7 @@ model InventoryMovement {
   destination    String?
   reason         String?
   notes          String?
-  created_by     String
+  created_by     String       @db.Uuid
   movement_date  DateTime     @default(now())
   created_at     DateTime     @default(now())
 
