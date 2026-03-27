@@ -48,6 +48,7 @@ export async function getCompany(id: string) {
 export async function createCompany(data: {
   name: string;
   slug: string;
+  active_modules: string[];
   adminEmail: string;
   adminName: string;
   adminPassword: string;
@@ -62,7 +63,11 @@ export async function createCompany(data: {
 
   const result = await prisma.$transaction(async (tx) => {
     const company = await tx.company.create({
-      data: { name: data.name, slug: data.slug },
+      data: { 
+        name: data.name, 
+        slug: data.slug,
+        active_modules: data.active_modules 
+      },
       select: COMPANY_SELECT,
     });
 
