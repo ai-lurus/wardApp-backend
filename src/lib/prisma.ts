@@ -23,7 +23,8 @@ export async function withTenant<T>(
   fn: (tx: PrismaClient) => Promise<T>
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+    // Explicitly cast to text/uuid to avoid operator mismatch in Postgres
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}::text, true)`;
     return fn(tx as unknown as PrismaClient);
   });
 }
