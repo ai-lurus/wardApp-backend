@@ -7,26 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AppModule {
+  inventario
+  operaciones
+  flotas
+  clientes
+  finanzas
+  admin
+}
+
 model Company {
-  id         String   @id @default(uuid())
-  name       String
-  slug       String   @unique
-  active     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  active     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  users      User[]
-  categories MaterialCategory[]
-  materials  Material[]
-  movements  InventoryMovement[]
-  warehouses WarehouseConfig[]
+  users      User[]
+  categories MaterialCategory[]
+  materials  Material[]
+  movements  InventoryMovement[]
+  warehouses WarehouseConfig[]
 
-  stripe_customer_id     String?
-  stripe_subscription_id String?
-  subscription_status    String?
-  active_modules         String[] @default(["inventario"])
+  stripe_customer_id     String?
+  stripe_subscription_id String?
+  subscription_status    String?
+  active_modules         AppModule[] @default([inventario])
 
-  @@map("companies")
+  @@map("companies")
 }
 
 model User {

@@ -37,7 +37,7 @@ router.get(
 const createCompanySchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes"),
-  active_modules: z.array(z.string()),
+  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])),
   adminEmail: z.string().email(),
   adminName: z.string().min(1),
   adminPassword: z.string().min(8),
@@ -65,7 +65,7 @@ const updateCompanySchema = z.object({
   name: z.string().min(1).optional(),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/).optional(),
   active: z.boolean().optional(),
-  active_modules: z.array(z.string()).optional(),
+  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).optional(),
 });
 
 // PATCH /api/admin/companies/:id
