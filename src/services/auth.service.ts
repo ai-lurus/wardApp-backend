@@ -7,29 +7,19 @@ import { prisma } from "../lib/prisma";
 import { sendPasswordResetEmail } from "./email.service";
 
 export async function login(email: string, password: string) {
-  const cleanEmail = email.trim().toLowerCase();
-  console.log(`[AUTH DEBUG] Intento de login con email original: "${email}", limpio: "${cleanEmail}"`);
-
   const user = await prisma.user.findFirst({
-    where: { email: cleanEmail },
+    where: { email },
     include: { company: true }
   });
 
-  console.log(`[AUTH DEBUG] Usuario encontrado en BD:`, user ? user.id : "null");
-
   if (!user || !user.active) {
-    throw new AppError(401, `Invalid credentials. User is ${user ? (user.active ? 'active' : 'inactive') : 'null'}`);
+    throw new AppError(401, "Invalid credentials");
   }
 
   const validPassword = await bcrypt.compare(password, user.password_hash);
-  // Temporalmente para pruebas debido a errores en la comparación de hash:
-  // const validPassword = (password === "12345678"); 
-
-  console.log(`[AUTH DEBUG] Password ingresada: "${password}"`);
-  console.log(`[AUTH DEBUG] ¿Es válida?: ${validPassword}`);
 
   if (!validPassword) {
-    throw new AppError(401, "Invalid credentials - Incorrect Password");
+    throw new AppError(401, "Invalid credentials");
   }
 
   const token = jwt.sign(
@@ -58,7 +48,7 @@ export async function login(email: string, password: string) {
 
 export async function changePassword(userId: string, companyId: string, currentPassword: string, newPassword: string) {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}::text, true)`;
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
     const user = await tx.user.findFirst({ where: { id: userId, company_id: companyId } });
     if (!user || !user.active) throw new AppError(404, "User not found");
 
@@ -113,7 +103,7 @@ export async function resetPassword(token: string, newPassword: string) {
 
 export async function getMe(userId: string, companyId: string) {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}::text, true)`;
+    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
     const user = await tx.user.findFirst({
       where: { id: userId, company_id: companyId },
       select: {
