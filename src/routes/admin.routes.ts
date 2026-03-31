@@ -35,12 +35,12 @@ router.get(
 );
 
 const createCompanySchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().min(1).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes"),
-  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])),
-  adminEmail: z.string().email(),
-  adminName: z.string().min(1),
-  adminPassword: z.string().min(8),
+  name: z.string().min(1, "Name is required"),
+  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes"),
+  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Active modules is required"),
+  adminEmail: z.email("Invalid email"),
+  adminName: z.string().min(1, "Admin name is required"),
+  adminPassword: z.string().min(8, "Admin password must be at least 8 characters long"),
 });
 
 // POST /api/admin/companies
@@ -53,7 +53,8 @@ router.post(
       res.status(201).json(result);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -62,10 +63,10 @@ router.post(
 );
 
 const updateCompanySchema = z.object({
-  name: z.string().min(1).optional(),
-  slug: z.string().min(1).regex(/^[a-z0-9-]+$/).optional(),
+  name: z.string().min(1, "Name is required").optional(),
+  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes").optional(),
   active: z.boolean().optional(),
-  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).optional(),
+  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Active modules is required").optional(),
 });
 
 // PATCH /api/admin/companies/:id
@@ -78,7 +79,8 @@ router.patch(
       res.json(company);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
