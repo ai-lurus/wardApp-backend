@@ -1,15 +1,100 @@
 # wardApp Backend
 
 SaaS API para gestión de inventarios y logística.
+Built with **Node.js 20**, **Express**, **TypeScript**, **Prisma**, and **PostgreSQL**.
+
+## Prerequisites
+
+Before starting, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) (version 20 or higher recommended).
+- [PostgreSQL](https://www.postgresql.org/) (running locally or via Docker).
+- **npm** (comes with Node.js).
+
+## Local Development Setup
+
+Follow these steps to set up your local development environment.
+
+### 1. Install Dependencies
+
+Open a terminal in this folder and run:
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+The project requires a `.env` file for configuration. Create a copy from the example file:
+
+```bash
+cp .env.example .env
+```
+*(On Windows using PowerShell, you can run `Copy-Item .env.example .env`)*
+
+Open the new `.env` file in your editor. You need to update the `DATABASE_URL` variable with your local PostgreSQL server credentials. For example:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/wardapp?schema=public"
+```
+*Make sure the `wardapp` database exists in your Postgres server, or replace the database name with one you have already created.*
+
+### 3. Start PostgreSQL using Docker (Optional)
+
+If you don't have PostgreSQL installed locally, you can easily spin up a database instance using Docker. Run the following command:
+
+```bash
+docker run --name wardapp-postgres -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=wardapp -p 5432:5432 -d postgres
+```
+
+*This command creates a background PostgreSQL container with the exact credentials recommended in the `.env.example` file.*
+
+### 4. Migrate the Database
+
+With your PostgreSQL database running and the `.env` correctly pointing to it, run the following command to create the required tables defined in the Prisma schema:
+
+```bash
+npm run db:migrate
+```
+
+### 5. Seed the Database (Optional)
+
+You can populate the database with initial seed data to aid in development testing:
+
+```bash
+# To insert base dummy data
+npm run db:seed
+
+# To create a Super Admin user
+npm run seed:super-admin
+```
+
+### 6. Start the Development Server
+
+Once the database is ready, you can start the project build in watch mode (it automatically reloads on code changes):
+
+```bash
+npm run dev
+```
+
+The server will be listening by default at [http://localhost:3001](http://localhost:3001).
+
+---
+
+## Available Scripts
+
+The following key commands are configured in the `package.json` file:
+
+- `npm run dev` : Starts the development server using `tsx` to compile TypeScript on the fly.
+- `npm run build` : Transpiles the project and generates the Prisma client for production.
+- `npm start` : Starts the compiled server in production mode (requires running build first).
+- `npm run db:studio` : Opens [Prisma Studio](https://www.prisma.io/studio) in your browser, a visual interface to explore and manipulate your database records.
+- `npm run db:migrate` : Synchronizes your PostgreSQL schema with the Prisma schema file.
+
+---
 
 ## Configuración de Entorno
 
 Este proyecto utiliza `dotenv` para cargar variables de entorno y `zod` para validarlas en tiempo de ejecución.
-
-### Configuración Local:
-1. Copia el archivo `.env.example` a uno nuevo llamado `.env`.
-2. Completa los valores necesarios, especialmente `DATABASE_URL` y las llaves de servicios externos si los necesitas.
-3. Asegúrate de que `ALLOWED_ORIGINS` incluya la URL de tu frontend local (normalmente `http://localhost:3000`).
 
 ### Variables Críticas:
 - `NODE_ENV`: Define el comportamiento del servidor (`development`, `staging`, `production`).
