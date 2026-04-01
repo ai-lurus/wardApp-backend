@@ -7,7 +7,7 @@ import { prisma } from "../lib/prisma";
 import { sendPasswordResetEmail } from "./email.service";
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { email },
     include: { company: true }
   });
@@ -17,6 +17,7 @@ export async function login(email: string, password: string) {
   }
 
   const validPassword = await bcrypt.compare(password, user.password_hash);
+
   if (!validPassword) {
     throw new AppError(401, "Invalid credentials");
   }
