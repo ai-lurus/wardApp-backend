@@ -11,7 +11,7 @@ const router = Router();
 
 const checkoutSchema = z.object({
     modules: z.array(z.string()).default(["inventario"]),
-    returnUrl: z.string().url(),
+    returnUrl: z.url(),
 });
 
 router.post(
@@ -51,7 +51,7 @@ router.post(
 );
 
 const portalSchema = z.object({
-    returnUrl: z.string().url(),
+    returnUrl: z.url(),
 });
 
 router.post(

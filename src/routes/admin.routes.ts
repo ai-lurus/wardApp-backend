@@ -35,12 +35,12 @@ router.get(
 );
 
 const createCompanySchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes"),
-  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Active modules is required"),
-  adminEmail: z.email("Invalid email"),
-  adminName: z.string().min(1, "Admin name is required"),
-  adminPassword: z.string().min(8, "Admin password must be at least 8 characters long"),
+  name: z.string().min(1, "El nombre es requerido"),
+  slug: z.string().min(1, "El slug es requerido").regex(/^[a-z0-9-]+$/, "El slug debe ser alfanumérico en minúsculas con guiones"),
+  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Los módulos activos son requeridos"),
+  adminEmail: z.email("Email inválido"),
+  adminName: z.string().min(1, "El nombre del administrador es requerido"),
+  adminPassword: z.string().min(8, "La contraseña del administrador debe tener al menos 8 caracteres"),
 });
 
 // POST /api/admin/companies
@@ -63,10 +63,10 @@ router.post(
 );
 
 const updateCompanySchema = z.object({
-  name: z.string().min(1, "Name is required").optional(),
-  slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with dashes").optional(),
+  name: z.string().min(1, "El nombre es requerido").optional(),
+  slug: z.string().min(1, "El slug es requerido").regex(/^[a-z0-9-]+$/, "El slug debe ser alfanumérico en minúsculas con guiones").optional(),
   active: z.boolean().optional(),
-  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Active modules is required").optional(),
+  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Los módulos activos son requeridos").optional(),
 });
 
 // PATCH /api/admin/companies/:id
@@ -104,9 +104,9 @@ router.get(
 );
 
 const createCompanyUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  password: z.string().min(8),
+  email: z.email("Email inválido"),
+  name: z.string().min(1, "El nombre es requerido"),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
   role: z.enum(["admin", "operator"]),
 });
 
@@ -120,7 +120,8 @@ router.post(
       res.status(201).json(user);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }

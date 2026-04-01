@@ -21,9 +21,9 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
 
 // POST /api/users
 const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  password: z.string().min(6),
+  email: z.email().min(1, "El correo electrónico es requerido"),
+  name: z.string().min(1, "El nombre es requerido"),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   role: z.enum(["admin", "almacenista"]),
 });
 
@@ -37,7 +37,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
     res.status(201).json(user);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      next(new AppError(400, "Invalid request body"));
+      const message = err.issues.map((e: any) => e.message).join(', ');
+      next(new AppError(400, message));
     } else {
       next(err);
     }
@@ -47,9 +48,9 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 // PUT /api/users/:id
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
-  email: z.string().email().optional(),
+  email: z.email("Email inválido").optional(),
   role: z.enum(["admin", "almacenista"]).optional(),
-  password: z.string().min(6).optional(),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").optional(),
 });
 
 router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
@@ -59,7 +60,8 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
     res.json(user);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      next(new AppError(400, "Invalid request body"));
+      const message = err.issues.map((e: any) => e.message).join(', ');
+      next(new AppError(400, message));
     } else {
       next(err);
     }
@@ -81,7 +83,8 @@ router.patch("/:id/status", async (req: Request, res: Response, next: NextFuncti
     res.json(user);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      next(new AppError(400, "Invalid request body"));
+      const message = err.issues.map((e: any) => e.message).join(', ');
+      next(new AppError(400, message));
     } else {
       next(err);
     }

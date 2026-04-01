@@ -35,7 +35,8 @@ router.put(
       res.json(config);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -58,7 +59,7 @@ router.get(
 
 // POST /api/warehouse/zones
 const createZoneSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, "El nombre de la zona es requerido"),
   description: z.string().optional(),
   x_pct: z.number().min(0).max(100),
   y_pct: z.number().min(0).max(100),
@@ -76,7 +77,8 @@ router.post(
       res.status(201).json(zone);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -104,7 +106,8 @@ router.put(
       res.json(zone);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }

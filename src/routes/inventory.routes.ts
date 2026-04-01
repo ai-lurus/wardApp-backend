@@ -12,8 +12,8 @@ router.use(checkModuleAccess("inventario"));
 
 // POST /api/inventory/entry
 const entrySchema = z.object({
-  material_id: z.string().uuid(),
-  quantity: z.number().int().positive(),
+  material_id: z.string().uuid().min(1, "El ID del material es requerido"),
+  quantity: z.number().int().positive().min(1, "La cantidad debe ser mayor a 0"),
   unit_cost: z.number().positive().optional(),
   supplier: z.string().optional(),
   invoice_number: z.string().optional(),
@@ -33,7 +33,8 @@ router.post(
       res.status(201).json(movement);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -43,8 +44,8 @@ router.post(
 
 // POST /api/inventory/exit
 const exitSchema = z.object({
-  material_id: z.string().uuid(),
-  quantity: z.number().int().positive(),
+  material_id: z.string().uuid().min(1, "El ID del material es requerido"),
+  quantity: z.number().int().positive().min(1, "La cantidad debe ser mayor a 0"),
   destination: z.string().optional(),
   reason: z.string().optional(),
   notes: z.string().optional(),
@@ -63,7 +64,8 @@ router.post(
       res.status(201).json(movement);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }

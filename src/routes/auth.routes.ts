@@ -7,8 +7,8 @@ import { AppError } from "../middleware/errorHandler";
 const router = Router();
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.email("Email inválido"),
+  password: z.string().min(1, "La contraseña es requerida"),
 });
 
 router.post(
@@ -20,7 +20,8 @@ router.post(
       res.json(result);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -42,8 +43,8 @@ router.get(
 );
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(6),
+  currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+  newPassword: z.string().min(6, "La nueva contraseña debe tener al menos 6 caracteres"),
 });
 
 router.patch(
@@ -56,7 +57,8 @@ router.patch(
       res.json({ message: "Contraseña actualizada" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -65,7 +67,7 @@ router.patch(
 );
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.email("Email inválido"),
 });
 
 router.post(
@@ -82,7 +84,8 @@ router.post(
       res.json({ message: "Si el correo existe, recibirás un enlace en breve" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -91,8 +94,8 @@ router.post(
 );
 
 const resetPasswordSchema = z.object({
-  token: z.string().min(1),
-  newPassword: z.string().min(6),
+  token: z.string().min(1, "El token es requerido"),
+  newPassword: z.string().min(6, "La nueva contraseña debe tener al menos 6 caracteres"),
 });
 
 router.post(
@@ -104,7 +107,8 @@ router.post(
       res.json({ message: "Contraseña actualizada exitosamente" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
