@@ -1,9 +1,5 @@
 import { AppError } from "../middleware/errorHandler";
-import { prisma } from "../lib/prisma";
-
-async function setTenant(tx: typeof prisma, companyId: string) {
-  await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
-}
+import { prisma, withTenant } from "../lib/prisma";
 
 interface ListMaterialsParams {
   companyId: string;
@@ -22,8 +18,7 @@ export async function listMaterials(params: ListMaterialsParams) {
   if (active !== undefined) where.active = active;
   if (search) where.name = { contains: search, mode: "insensitive" };
 
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const [items, count] = await Promise.all([
       tx.material.findMany({
         where,
@@ -39,8 +34,7 @@ export async function listMaterials(params: ListMaterialsParams) {
 }
 
 export async function getMaterial(id: string, companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const material = await tx.material.findFirst({
       where: { id, company_id: companyId },
       include: { category: true, zone: true },
@@ -67,8 +61,7 @@ interface CreateMaterialData {
 export async function createMaterial(data: CreateMaterialData) {
   const { companyId, ...rest } = data;
 
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const category = await tx.materialCategory.findFirst({
       where: { id: rest.category_id, company_id: companyId },
     });
@@ -95,8 +88,7 @@ interface UpdateMaterialData {
 }
 
 export async function updateMaterial(id: string, companyId: string, data: UpdateMaterialData) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const existing = await tx.material.findFirst({ where: { id, company_id: companyId } });
     if (!existing) throw new AppError(404, "Material not found");
 
@@ -116,8 +108,7 @@ export async function updateMaterial(id: string, companyId: string, data: Update
 }
 
 export async function deleteMaterial(id: string, companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const existing = await tx.material.findFirst({ where: { id, company_id: companyId } });
     if (!existing) throw new AppError(404, "Material not found");
     return tx.material.update({ where: { id }, data: { active: false } });
@@ -125,8 +116,7 @@ export async function deleteMaterial(id: string, companyId: string) {
 }
 
 export async function listCategories(companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     return tx.materialCategory.findMany({
       where: { company_id: companyId },
       orderBy: { name: "asc" },
@@ -136,8 +126,7 @@ export async function listCategories(companyId: string) {
 }
 
 export async function createCategory(companyId: string, name: string, description?: string) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const existing = await tx.materialCategory.findFirst({
       where: { company_id: companyId, name },
     });
@@ -154,8 +143,7 @@ export async function updateCategory(
   name?: string,
   description?: string
 ) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const existing = await tx.materialCategory.findFirst({ where: { id, company_id: companyId } });
     if (!existing) throw new AppError(404, "Category not found");
 
@@ -171,8 +159,7 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string, companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await setTenant(tx as any, companyId);
+  return withTenant(companyId, async (tx) => {
     const existing = await tx.materialCategory.findFirst({
       where: { id, company_id: companyId },
       include: { _count: { select: { materials: true } } },

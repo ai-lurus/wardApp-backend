@@ -1,11 +1,10 @@
 import { AppError } from "../middleware/errorHandler";
-import { prisma } from "../lib/prisma";
+import { prisma, withTenant } from "../lib/prisma";
 
 // ─── Config ─────────────────────────────────────────────
 
 export async function getOrCreateConfig(companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     let config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     if (!config) {
       config = await tx.warehouseConfig.create({
@@ -17,8 +16,7 @@ export async function getOrCreateConfig(companyId: string) {
 }
 
 export async function updateConfig(companyId: string, data: { width_m?: number; height_m?: number }) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     let config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     if (!config) {
       config = await tx.warehouseConfig.create({
@@ -32,8 +30,7 @@ export async function updateConfig(companyId: string, data: { width_m?: number; 
 // ─── Zones ──────────────────────────────────────────────
 
 export async function listZones(companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     if (!config) return [];
     return tx.warehouseZone.findMany({
@@ -55,8 +52,7 @@ interface CreateZoneData {
 }
 
 export async function createZone(companyId: string, data: CreateZoneData) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     let config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     if (!config) {
       config = await tx.warehouseConfig.create({
@@ -81,8 +77,7 @@ interface UpdateZoneData {
 }
 
 export async function updateZone(id: string, companyId: string, data: UpdateZoneData) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     const existing = await tx.warehouseZone.findFirst({
       where: { id, config_id: config?.id },
@@ -97,8 +92,7 @@ export async function updateZone(id: string, companyId: string, data: UpdateZone
 }
 
 export async function deleteZone(id: string, companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     const existing = await tx.warehouseZone.findFirst({
       where: { id, config_id: config?.id },
@@ -111,8 +105,7 @@ export async function deleteZone(id: string, companyId: string) {
 // ─── Map (config + zones with materials) ────────────────
 
 export async function getMap(companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const config = await tx.warehouseConfig.findFirst({ where: { company_id: companyId } });
     if (!config) return { config: null, zones: [] };
 

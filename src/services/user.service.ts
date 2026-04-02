@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { AppError } from "../middleware/errorHandler";
-import { prisma } from "../lib/prisma";
+import { prisma, withTenant } from "../lib/prisma";
 
 const USER_SELECT = {
   id: true,
@@ -12,8 +12,7 @@ const USER_SELECT = {
 } as const;
 
 export async function listUsers(companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     return tx.user.findMany({
       where: { company_id: companyId },
       select: USER_SELECT,
@@ -29,8 +28,7 @@ export async function createUser(data: {
   password: string;
   role: string;
 }) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${data.companyId}, true)`;
+  return withTenant(data.companyId, async (tx) => {
 
     const existing = await tx.user.findUnique({ where: { email: data.email } });
     if (existing) throw new AppError(409, "Email already in use");
@@ -54,8 +52,7 @@ export async function updateUser(
   companyId: string,
   data: { name?: string; email?: string; role?: string; password?: string }
 ) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
 
     const user = await tx.user.findFirst({ where: { id, company_id: companyId } });
     if (!user) throw new AppError(404, "User not found");
@@ -76,8 +73,7 @@ export async function updateUser(
 }
 
 export async function setUserStatus(id: string, companyId: string, active: boolean) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const user = await tx.user.findFirst({ where: { id, company_id: companyId } });
     if (!user) throw new AppError(404, "User not found");
     return tx.user.update({ where: { id }, data: { active }, select: USER_SELECT });
