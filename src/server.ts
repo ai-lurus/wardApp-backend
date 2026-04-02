@@ -12,6 +12,7 @@ import { adminRoutes } from "./routes/admin.routes";
 import { billingRoutes } from "./routes/billing.routes";
 import { uploadRoutes } from "./routes/upload.routes";
 
+
 const app = express();
 
 // Middleware
