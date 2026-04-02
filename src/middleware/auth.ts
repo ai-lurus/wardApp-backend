@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: {
