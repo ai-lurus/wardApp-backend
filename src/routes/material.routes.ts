@@ -24,7 +24,7 @@ router.get(
 
 // POST /api/materials/categories
 const createCategorySchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, "El nombre de la categoría es requerido"),
   description: z.string().optional(),
 });
 
@@ -41,7 +41,8 @@ router.post(
       res.status(201).json(category);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -69,7 +70,8 @@ router.put(
       res.json(category);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -126,11 +128,11 @@ router.get(
 
 // POST /api/materials
 const createMaterialSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, "El nombre del material es requerido"),
   sku: z.string().max(20).optional(),
   location: z.string().optional(),
   zone_id: z.string().uuid().nullable().optional(),
-  category_id: z.string().uuid(),
+  category_id: z.string().uuid().min(1, "El ID de la categoría es requerido"),
   unit: z.string().optional(),
   reference_price: z.number().positive().optional(),
   min_stock: z.number().int().min(0).optional(),
@@ -150,7 +152,8 @@ router.post(
       res.status(201).json(material);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -185,7 +188,8 @@ router.put(
       res.json(material);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
