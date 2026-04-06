@@ -29,6 +29,8 @@ model Company {
   materials  Material[]
   movements  InventoryMovement[]
   warehouses WarehouseConfig[]
+  units      Unit[]
+
 
   stripe_customer_id     String?
   stripe_subscription_id String?
@@ -52,6 +54,8 @@ model User {
   company       Company              @relation(fields: [company_id], references: [id])
   movements     InventoryMovement[]  @relation("CreatedByUser")
   reset_tokens  PasswordResetToken[]
+  refresh_tokens RefreshToken[]
+
 
   @@map("users")
 }
@@ -170,3 +174,62 @@ model InventoryMovement {
 
   @@map("inventory_movements")
 }
+
+// Enums para Módulo de Flotas
+enum UnitType {
+  caja_seca
+  refrigerado
+  plataforma
+  volteo
+  pipa
+  otro
+}
+
+enum UnitStatus {
+  disponible
+  en_viaje
+  mantenimiento
+  inactivo
+}
+
+// Modelo de Unidades
+model Unit {
+  id                    String     @id @default(uuid()) @db.Uuid
+  company_id            String     @db.Uuid
+  plate                 String
+  brand                 String?
+  model                 String?
+  year                  Int?
+  type                  UnitType
+  axles                 Int
+  status                UnitStatus @default(disponible)
+  vin                   String?
+  insurance_expiry      DateTime?
+  fuel_efficiency_km_l  Decimal?   @db.Decimal(10, 2)
+  last_maintenance_date DateTime?
+  notes                 String?
+  created_at            DateTime   @default(now())
+  updated_at            DateTime   @updatedAt
+
+  company Company @relation(fields: [company_id], references: [id])
+
+  @@unique([company_id, plate])
+  @@unique([company_id, vin])
+  @@map("units")
+}
+
+// Modelo para Seguridad (Refresh Tokens)
+model RefreshToken {
+  id           String   @id @default(uuid()) @db.Uuid
+  user_id      String   @db.Uuid
+  token_hash   String   @unique
+  expires_at   DateTime
+  revoked      Boolean  @default(false)
+  replaced_by  String?  @db.Uuid
+  created_at   DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
