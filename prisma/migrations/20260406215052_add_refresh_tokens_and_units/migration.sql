@@ -10,18 +10,6 @@
   - The primary key for the `warehouse_config` table will be changed. If it partially fails, the table could be left without primary key constraint.
   - The primary key for the `warehouse_zones` table will be changed. If it partially fails, the table could be left without primary key constraint.
   - A unique constraint covering the columns `[company_id,sku]` on the table `materials` will be added. If there are existing duplicate values, this will fail.
-  - Changed the type of `id` on the `inventory_movements` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `material_id` on the `inventory_movements` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `created_by` on the `inventory_movements` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `id` on the `material_categories` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `id` on the `materials` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `category_id` on the `materials` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `id` on the `password_reset_tokens` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `user_id` on the `password_reset_tokens` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `id` on the `users` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `id` on the `warehouse_config` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `id` on the `warehouse_zones` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Changed the type of `config_id` on the `warehouse_zones` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
 
 */
 -- CreateEnum
@@ -31,105 +19,100 @@ CREATE TYPE "UnitType" AS ENUM ('caja_seca', 'refrigerado', 'plataforma', 'volte
 CREATE TYPE "UnitStatus" AS ENUM ('disponible', 'en_viaje', 'mantenimiento', 'inactivo');
 
 -- DropForeignKey
-ALTER TABLE "inventory_movements" DROP CONSTRAINT "inventory_movements_created_by_fkey";
+ALTER TABLE "inventory_movements" DROP CONSTRAINT IF EXISTS "inventory_movements_created_by_fkey";
 
 -- DropForeignKey
-ALTER TABLE "inventory_movements" DROP CONSTRAINT "inventory_movements_material_id_fkey";
+ALTER TABLE "inventory_movements" DROP CONSTRAINT IF EXISTS "inventory_movements_material_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "materials" DROP CONSTRAINT "materials_category_id_fkey";
+ALTER TABLE "materials" DROP CONSTRAINT IF EXISTS "materials_category_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "materials" DROP CONSTRAINT "materials_zone_id_fkey";
+ALTER TABLE "materials" DROP CONSTRAINT IF EXISTS "materials_zone_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "password_reset_tokens" DROP CONSTRAINT "password_reset_tokens_user_id_fkey";
+ALTER TABLE "password_reset_tokens" DROP CONSTRAINT IF EXISTS "password_reset_tokens_user_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "warehouse_zones" DROP CONSTRAINT "warehouse_zones_config_id_fkey";
+ALTER TABLE "warehouse_zones" DROP CONSTRAINT IF EXISTS "warehouse_zones_config_id_fkey";
 
 -- DropIndex
-DROP INDEX "inventory_movements_company_id_idx";
+DROP INDEX IF EXISTS "inventory_movements_company_id_idx";
 
 -- DropIndex
-DROP INDEX "material_categories_company_id_idx";
+DROP INDEX IF EXISTS "material_categories_company_id_idx";
 
 -- DropIndex
-DROP INDEX "material_categories_name_key";
+DROP INDEX IF EXISTS "material_categories_name_key";
 
 -- DropIndex
-DROP INDEX "materials_company_id_idx";
+DROP INDEX IF EXISTS "materials_company_id_idx";
 
 -- DropIndex
-DROP INDEX "materials_sku_key";
+DROP INDEX IF EXISTS "materials_sku_key";
 
 -- DropIndex
-DROP INDEX "users_company_id_idx";
+DROP INDEX IF EXISTS "users_company_id_idx";
 
 -- DropIndex
-DROP INDEX "warehouse_config_company_id_idx";
+DROP INDEX IF EXISTS "warehouse_config_company_id_idx";
 
--- AlterTable
+-- AlterTable companies
 ALTER TABLE "companies" ALTER COLUMN "id" DROP DEFAULT,
 ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
 ALTER COLUMN "updated_at" DROP DEFAULT,
 ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3);
 
--- AlterTable
-ALTER TABLE "inventory_movements" DROP CONSTRAINT "inventory_movements_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-DROP COLUMN "material_id",
-ADD COLUMN     "material_id" UUID NOT NULL,
-DROP COLUMN "created_by",
-ADD COLUMN     "created_by" UUID NOT NULL,
-ADD CONSTRAINT "inventory_movements_pkey" PRIMARY KEY ("id");
+-- AlterTable inventory_movements (backfill: cast TEXT → UUID)
+ALTER TABLE "inventory_movements" DROP CONSTRAINT "inventory_movements_pkey";
+ALTER TABLE "inventory_movements"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid,
+  ALTER COLUMN "material_id" TYPE UUID USING "material_id"::uuid,
+  ALTER COLUMN "created_by" TYPE UUID USING "created_by"::uuid;
+ALTER TABLE "inventory_movements" ADD CONSTRAINT "inventory_movements_pkey" PRIMARY KEY ("id");
 
--- AlterTable
-ALTER TABLE "material_categories" DROP CONSTRAINT "material_categories_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-ADD CONSTRAINT "material_categories_pkey" PRIMARY KEY ("id");
+-- AlterTable material_categories (backfill: cast TEXT → UUID)
+ALTER TABLE "material_categories" DROP CONSTRAINT "material_categories_pkey";
+ALTER TABLE "material_categories"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid;
+ALTER TABLE "material_categories" ADD CONSTRAINT "material_categories_pkey" PRIMARY KEY ("id");
 
--- AlterTable
-ALTER TABLE "materials" DROP CONSTRAINT "materials_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-DROP COLUMN "category_id",
-ADD COLUMN     "category_id" UUID NOT NULL,
-DROP COLUMN "zone_id",
-ADD COLUMN     "zone_id" UUID,
-ADD CONSTRAINT "materials_pkey" PRIMARY KEY ("id");
+-- AlterTable materials (backfill: cast TEXT → UUID)
+ALTER TABLE "materials" DROP CONSTRAINT "materials_pkey";
+ALTER TABLE "materials"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid,
+  ALTER COLUMN "category_id" TYPE UUID USING "category_id"::uuid,
+  ALTER COLUMN "zone_id" TYPE UUID USING "zone_id"::uuid;
+ALTER TABLE "materials" ADD CONSTRAINT "materials_pkey" PRIMARY KEY ("id");
 
--- AlterTable
-ALTER TABLE "password_reset_tokens" DROP CONSTRAINT "password_reset_tokens_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-DROP COLUMN "user_id",
-ADD COLUMN     "user_id" UUID NOT NULL,
-ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3),
-ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
-ADD CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id");
+-- AlterTable password_reset_tokens (backfill: cast TEXT → UUID)
+ALTER TABLE "password_reset_tokens" DROP CONSTRAINT "password_reset_tokens_pkey";
+ALTER TABLE "password_reset_tokens" ALTER COLUMN "id" DROP DEFAULT;
+ALTER TABLE "password_reset_tokens"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid,
+  ALTER COLUMN "user_id" TYPE UUID USING "user_id"::uuid,
+  ALTER COLUMN "expires_at" SET DATA TYPE TIMESTAMP(3),
+  ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3);
+ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id");
 
--- AlterTable
-ALTER TABLE "users" DROP CONSTRAINT "users_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
+-- AlterTable users (backfill: cast TEXT → UUID)
+ALTER TABLE "users" DROP CONSTRAINT "users_pkey";
+ALTER TABLE "users"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid;
+ALTER TABLE "users" ADD CONSTRAINT "users_pkey" PRIMARY KEY ("id");
 
--- AlterTable
-ALTER TABLE "warehouse_config" DROP CONSTRAINT "warehouse_config_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-ADD CONSTRAINT "warehouse_config_pkey" PRIMARY KEY ("id");
+-- AlterTable warehouse_config (backfill: cast TEXT → UUID)
+ALTER TABLE "warehouse_config" DROP CONSTRAINT "warehouse_config_pkey";
+ALTER TABLE "warehouse_config"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid;
+ALTER TABLE "warehouse_config" ADD CONSTRAINT "warehouse_config_pkey" PRIMARY KEY ("id");
 
--- AlterTable
-ALTER TABLE "warehouse_zones" DROP CONSTRAINT "warehouse_zones_pkey",
-DROP COLUMN "id",
-ADD COLUMN     "id" UUID NOT NULL,
-DROP COLUMN "config_id",
-ADD COLUMN     "config_id" UUID NOT NULL,
-ADD CONSTRAINT "warehouse_zones_pkey" PRIMARY KEY ("id");
+-- AlterTable warehouse_zones (backfill: cast TEXT → UUID)
+ALTER TABLE "warehouse_zones" DROP CONSTRAINT "warehouse_zones_pkey";
+ALTER TABLE "warehouse_zones"
+  ALTER COLUMN "id" TYPE UUID USING "id"::uuid,
+  ALTER COLUMN "config_id" TYPE UUID USING "config_id"::uuid;
+ALTER TABLE "warehouse_zones" ADD CONSTRAINT "warehouse_zones_pkey" PRIMARY KEY ("id");
 
 -- CreateTable
 CREATE TABLE "units" (
@@ -178,7 +161,6 @@ CREATE UNIQUE INDEX "refresh_tokens_token_hash_key" ON "refresh_tokens"("token_h
 -- CreateIndex
 DROP INDEX IF EXISTS "materials_company_id_sku_key";
 CREATE UNIQUE INDEX "materials_company_id_sku_key" ON "materials"("company_id", "sku");
-
 
 -- AddForeignKey
 ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
