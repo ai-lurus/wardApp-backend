@@ -5,7 +5,7 @@ import { AppError } from "../middleware/errorHandler";
 export interface UnitFilters {
   status?: UnitStatus;
   type?: UnitType;
-  // available_only?: boolean;
+  available_only?: boolean;
 }
 
 export async function getUnits(companyId: string, filters: UnitFilters) {
@@ -22,10 +22,9 @@ export async function getUnits(companyId: string, filters: UnitFilters) {
       where.type = filters.type;
     }
 
-    // TODO: Implementar filtro de unidades disponibles en un futuro
-    // if (filters.available_only) {
-    //   where.status = UnitStatus.disponible;
-    // }
+    if (filters.available_only) {
+      where.status = UnitStatus.disponible;
+    }
 
     return tx.unit.findMany({
       where,

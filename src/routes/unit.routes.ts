@@ -51,7 +51,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
     const units = await unitService.getUnits(req.user!.companyId, {
       status,
       type,
-      // available_only: available_only,
+      available_only: available_only,
     });
     res.json(units);
   } catch (err) {
