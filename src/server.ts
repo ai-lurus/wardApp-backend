@@ -11,6 +11,7 @@ import { warehouseRoutes } from "./routes/warehouse.routes";
 import { adminRoutes } from "./routes/admin.routes";
 import { billingRoutes } from "./routes/billing.routes";
 import { uploadRoutes } from "./routes/upload.routes";
+import { unitRoutes } from "./routes/unit.routes";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/units", unitRoutes);
 
 // Error handler
 app.use(errorHandler);
