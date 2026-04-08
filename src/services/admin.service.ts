@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { AppModule } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
 import { prisma } from "../lib/prisma";
 import { sendWelcomeEmail } from "./email.service";
@@ -48,7 +49,7 @@ export async function getCompany(id: string) {
 export async function createCompany(data: {
   name: string;
   slug: string;
-  active_modules: string[];
+  active_modules: AppModule[];
   adminEmail: string;
   adminName: string;
   adminPassword: string;
@@ -100,7 +101,7 @@ export async function createCompany(data: {
 
 export async function updateCompany(
   id: string,
-  data: { name?: string; slug?: string; active?: boolean; active_modules?: string[] }
+  data: { name?: string; slug?: string; active?: boolean; active_modules?: AppModule[] }
 ) {
   const company = await prisma.company.findUnique({ where: { id } });
   if (!company) throw new AppError(404, "Company not found");

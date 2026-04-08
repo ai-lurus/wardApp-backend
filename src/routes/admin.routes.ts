@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { AppModule } from "@prisma/client";
 import * as adminService from "../services/admin.service";
 import { authMiddleware } from "../middleware/auth";
 import { requireRole } from "../middleware/role";
@@ -37,7 +38,7 @@ router.get(
 const createCompanySchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   slug: z.string().min(1, "El slug es requerido").regex(/^[a-z0-9-]+$/, "El slug debe ser alfanumérico en minúsculas con guiones"),
-  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Los módulos activos son requeridos"),
+  active_modules: z.array(z.nativeEnum(AppModule)).min(1, "Los módulos activos son requeridos"),
   adminEmail: z.email("Email inválido"),
   adminName: z.string().min(1, "El nombre del administrador es requerido"),
   adminPassword: z.string().min(8, "La contraseña del administrador debe tener al menos 8 caracteres"),
@@ -66,7 +67,7 @@ const updateCompanySchema = z.object({
   name: z.string().min(1, "El nombre es requerido").optional(),
   slug: z.string().min(1, "El slug es requerido").regex(/^[a-z0-9-]+$/, "El slug debe ser alfanumérico en minúsculas con guiones").optional(),
   active: z.boolean().optional(),
-  active_modules: z.array(z.enum(["inventario", "operaciones", "flotas", "clientes", "finanzas", "admin"])).min(1, "Los módulos activos son requeridos").optional(),
+  active_modules: z.array(z.nativeEnum(AppModule)).min(1, "Los módulos activos son requeridos").optional(),
 });
 
 // PATCH /api/admin/companies/:id

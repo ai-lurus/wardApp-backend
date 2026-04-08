@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { AppModule } from "@prisma/client";
 import { authMiddleware } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
 import { prisma } from "../lib/prisma";
@@ -106,7 +107,7 @@ router.post(
                     const companyId = session.client_reference_id;
                     const customerId = session.customer as string;
                     const subscriptionId = session.subscription as string;
-                    const assignedModules = session.metadata?.modules?.split(",") || ["inventario"];
+                    const assignedModules = (session.metadata?.modules?.split(",") || ["inventario"]) as AppModule[];
 
                     if (companyId) {
                         await prisma.company.update({
