@@ -25,11 +25,24 @@ export async function login(email: string, password: string) {
   const token = jwt.sign(
     { userId: user.id, role: user.role, companyId: user.company_id },
     env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions
+    { expiresIn: env.JWT_ACCESS_EXPIRES_IN } as jwt.SignOptions
   );
+
+  const refreshToken = crypto.randomUUID();
+  const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000);
+
+  await prisma.refreshToken.create({
+    data: {
+      user_id: user.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt
+    }
+  });
 
   return {
     token,
+    refreshToken,
     user: {
       id: user.id,
       email: user.email,
@@ -45,6 +58,79 @@ export async function login(email: string, password: string) {
     },
   };
 }
+
+export async function processRefreshToken(tokenInput: string) {
+  const tokenHash = crypto.createHash('sha256').update(tokenInput).digest('hex');
+  
+  const tokenRecord = await prisma.refreshToken.findUnique({
+    where: { token_hash: tokenHash },
+    include: { user: { include: { company: true } } }
+  });
+
+  if (!tokenRecord) {
+    throw new AppError(401, "Refresh token inválido");
+  }
+
+  // Kill-Switch: if token is already revoked or replaced, assume security breach
+  if (tokenRecord.revoked || tokenRecord.replaced_by) {
+    // Revoke all active tokens for this user
+    await prisma.refreshToken.updateMany({
+      where: { user_id: tokenRecord.user_id, revoked: false },
+      data: { revoked: true }
+    });
+    throw new AppError(401, "Token de refresco comprometido. Todas las sesiones han sido cerradas.");
+  }
+
+  if (tokenRecord.expires_at < new Date()) {
+    throw new AppError(401, "Refresh token expirado");
+  }
+
+  // Valid token -> Rotate
+  const { user } = tokenRecord;
+  if (!user.active) throw new AppError(401, "Usuario inactivo");
+
+  const newAccessToken = jwt.sign(
+    { userId: user.id, role: user.role, companyId: user.company_id },
+    env.JWT_SECRET,
+    { expiresIn: env.JWT_ACCESS_EXPIRES_IN } as jwt.SignOptions
+  );
+
+  const newRefreshToken = crypto.randomUUID();
+  const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+  const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000);
+
+  await prisma.$transaction(async (tx) => {
+    // Create new
+    const newlyCreated = await tx.refreshToken.create({
+      data: {
+        user_id: user.id,
+        token_hash: newTokenHash,
+        expires_at: expiresAt
+      }
+    });
+
+    // Revoke current
+    await tx.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { revoked: true, replaced_by: newlyCreated.id }
+    });
+  });
+
+  return {
+    token: newAccessToken,
+    refreshToken: newRefreshToken,
+  };
+}
+
+export async function logout(tokenInput: string) {
+  if (!tokenInput) return;
+  const tokenHash = crypto.createHash('sha256').update(tokenInput).digest('hex');
+  await prisma.refreshToken.updateMany({
+    where: { token_hash: tokenHash },
+    data: { revoked: true }
+  });
+}
+
 
 export async function changePassword(userId: string, companyId: string, currentPassword: string, newPassword: string) {
   return prisma.$transaction(async (tx) => {

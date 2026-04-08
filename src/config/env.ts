@@ -10,7 +10,8 @@ const envSchema = z.object({
   // Base de datos y Auth
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1),
-  JWT_EXPIRES_IN: z.string().default("24h"),
+  JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
+  JWT_REFRESH_EXPIRES_IN_DAYS: z.coerce.number().default(7),
   
   // Servidor
   PORT: z.coerce.number().default(3001),

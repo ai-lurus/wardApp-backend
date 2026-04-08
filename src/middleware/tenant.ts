@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
+import { AppModule } from "@prisma/client";
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
@@ -20,7 +21,7 @@ export const checkModuleAccess = (moduleId: string) =>
             }
 
             const hasActiveSubscription = ACTIVE_STATUSES.has(company.subscription_status ?? "");
-            const hasModule = company.active_modules.includes(moduleId);
+            const hasModule = company.active_modules.includes(moduleId as AppModule);
 
             if (!hasActiveSubscription || !hasModule) {
                 return res.status(403).json({
