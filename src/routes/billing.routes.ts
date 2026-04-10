@@ -7,8 +7,36 @@ import { prisma } from "../lib/prisma";
 import * as stripeService from "../services/stripe.service";
 import { env } from "../config/env";
 import Stripe from "stripe";
+import { registry } from "../lib/openapi";
 
 const router = Router();
+
+// Documentación de rutas
+registry.registerPath({
+  method: "post",
+  path: "/billing/create-checkout-session",
+  summary: "Crear sesión de pago de Stripe",
+  tags: ["Billing"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            modules: z.array(z.string()).default(["inventario"]),
+            returnUrl: z.string().url(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "URL de la sesión de Stripe (Checkout o Portal si ya es cliente)",
+      content: { "application/json": { schema: z.object({ url: z.string() }) } },
+    },
+  },
+});
 
 const checkoutSchema = z.object({
     modules: z.array(z.string()).default(["inventario"]),
@@ -51,6 +79,31 @@ router.post(
     }
 );
 
+registry.registerPath({
+  method: "post",
+  path: "/billing/create-portal-session",
+  summary: "Crear sesión del Portal de Cliente de Stripe",
+  tags: ["Billing"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            returnUrl: z.string().url(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "URL del Portal de Stripe",
+      content: { "application/json": { schema: z.object({ url: z.string() }) } },
+    },
+  },
+});
+
 const portalSchema = z.object({
     returnUrl: z.url(),
 });
@@ -81,6 +134,21 @@ router.post(
         }
     }
 );
+
+registry.registerPath({
+  method: "post",
+  path: "/billing/webhook",
+  summary: "Webhook para eventos de Stripe",
+  description: "Este endpoint recibe eventos asíncronos desde Stripe (pagos exitosos, cancelaciones, etc). Requiere cuerpo en crudo (raw body).",
+  tags: ["Billing"],
+  responses: {
+    200: {
+      description: "Evento recibido",
+      content: { "application/json": { schema: z.object({ received: z.boolean() }) } },
+    },
+    400: { description: "Error en la firma del webhook" },
+  },
+});
 
 // Note: Stripe Webhooks need raw body, so you must mount a raw body parser specifically for this route in app.ts
 // Usually: app.post('/billing/webhook', express.raw({ type: 'application/json' }), webhookHandler);
