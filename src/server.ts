@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
 import { authRoutes } from "./routes/auth.routes";
@@ -27,6 +28,7 @@ app.use(
 app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Health check
 app.get("/api/health", (_req, res) => {

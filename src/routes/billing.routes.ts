@@ -116,7 +116,7 @@ router.post(
                                 stripe_customer_id: customerId,
                                 stripe_subscription_id: subscriptionId,
                                 subscription_status: "active",
-                                active_modules: assignedModules,
+                                active_modules: assignedModules as import("@prisma/client").AppModule[],
                             },
                         });
                     }
@@ -140,7 +140,7 @@ router.post(
                                 subscription_status: status,
                                 stripe_subscription_id: subscription.id,
                                 // Revoke paid modules when subscription is no longer active
-                                active_modules: isActive ? company.active_modules : ["inventario"],
+                                active_modules: (isActive ? company.active_modules : ["inventario"]) as import("@prisma/client").AppModule[],
                             }
                         });
                     }

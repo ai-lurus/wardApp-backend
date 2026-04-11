@@ -67,7 +67,7 @@ export async function createCompany(data: {
       data: { 
         name: data.name, 
         slug: data.slug,
-        active_modules: data.active_modules 
+        active_modules: data.active_modules as import("@prisma/client").AppModule[] 
       },
       select: COMPANY_SELECT,
     });
@@ -111,7 +111,7 @@ export async function updateCompany(
     if (existing) throw new AppError(409, "Slug already in use");
   }
 
-  return prisma.company.update({ where: { id }, data, select: COMPANY_SELECT });
+  return prisma.company.update({ where: { id }, data: { ...data, active_modules: data.active_modules as import("@prisma/client").AppModule[] | undefined }, select: COMPANY_SELECT });
 }
 
 // ─── Users within a company ──────────────────────────────

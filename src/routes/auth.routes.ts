@@ -17,7 +17,15 @@ router.post(
     try {
       const body = loginSchema.parse(req.body);
       const result = await authService.login(body.email, body.password);
-      res.json(result);
+      
+      res.cookie("refreshToken", result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days (matches env)
+      });
+      
+      res.json({ token: result.token, user: result.user });
     } catch (err) {
       if (err instanceof z.ZodError) {
         const message = err.issues.map((e: any) => e.message).join(', ');
@@ -28,6 +36,39 @@ router.post(
     }
   }
 );
+
+router.post("/refresh", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) throw new AppError(401, "No refresh token provided");
+
+    const result = await authService.processRefreshToken(token);
+
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.json({ token: result.token });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/logout", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (token) {
+      await authService.logout(token);
+    }
+    res.clearCookie("refreshToken");
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get(
   "/me",
