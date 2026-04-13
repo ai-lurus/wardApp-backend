@@ -30,6 +30,10 @@ const envSchema = z.object({
   GCS_CLIENT_EMAIL: z.string().optional(),
   GCS_PRIVATE_KEY: z.string().optional(),
   GCS_BUCKET_NAME: z.string().optional(),
+
+  // Warden (Anthropic)
+  ANTHROPIC_API_KEY: z.string().optional(),
+  WARDEN_MODEL: z.string().default("claude-sonnet-4-5"),
 }).refine((data) => {
   // Regla de Seguridad: Si estamos en producción o staging, el JWT_SECRET
   // NO debe ser el valor por defecto de desarrollo.

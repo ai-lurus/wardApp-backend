@@ -15,6 +15,7 @@ import { adminRoutes } from "./routes/admin.routes";
 import { billingRoutes } from "./routes/billing.routes";
 import { uploadRoutes } from "./routes/upload.routes";
 import { unitRoutes } from "./routes/unit.routes";
+import { wardenRoutes } from "./routes/warden.routes";
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/units", unitRoutes);
+app.use("/api/warden", wardenRoutes);
 
 // Error handler
 app.use(errorHandler);
