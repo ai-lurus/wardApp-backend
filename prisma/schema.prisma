@@ -230,6 +230,28 @@ model RefreshToken {
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@map("refresh_tokens")
+// Modelos para Rate Limiting y Seguridad
+model LoginAttempt {
+  id         String    @id @default(uuid()) @db.Uuid
+  ip         String
+  email      String
+  attempts   Int       @default(0)
+  lock_until DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@unique([ip, email])
+  @@map("login_attempts")
+}
+
+model SecurityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  event_type String   // e.g., "BRUTE_FORCE_LOCK", "SUSPICIOUS_ACTIVITY"
+  ip         String
+  email      String?
+  details    String?  @db.Text
+  created_at DateTime @default(now())
+
+  @@map("security_logs")
 }
 
