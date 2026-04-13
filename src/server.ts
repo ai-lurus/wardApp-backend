@@ -50,6 +50,11 @@ app.use("/api/units", unitRoutes);
 // Error handler
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`Server running on http://localhost:${env.PORT}`);
-});
+// Start server only if not in test environment
+if (process.env.NODE_ENV !== "test") {
+  app.listen(env.PORT, () => {
+    console.log(`Server running on http://localhost:${env.PORT}`);
+  });
+}
+
+export { app };
