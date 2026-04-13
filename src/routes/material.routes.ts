@@ -4,10 +4,84 @@ import * as materialService from "../services/material.service";
 import { authMiddleware } from "../middleware/auth";
 import { checkModuleAccess } from "../middleware/tenant";
 import { AppError } from "../middleware/errorHandler";
+import { registry } from "../lib/openapi";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModuleAccess("inventario"));
+
+// Schemas para OpenAPI
+const CategorySchema = registry.register(
+  "Category",
+  z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    company_id: z.string().uuid(),
+  })
+);
+
+const MaterialSchema = registry.register(
+  "Material",
+  z.object({
+    id: z.string().uuid(),
+    sku: z.string().nullable(),
+    name: z.string(),
+    description: z.string().nullable(),
+    unit: z.string().nullable(),
+    reference_price: z.number().nullable(),
+    min_stock: z.number(),
+    current_stock: z.number(),
+    active: z.boolean(),
+    category_id: z.string().uuid(),
+    location: z.string().nullable(),
+    image_url: z.string().nullable(),
+    zone_id: z.string().uuid().nullable(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+  })
+);
+
+// Documentación de rutas
+registry.registerPath({
+  method: "get",
+  path: "/materials/categories",
+  summary: "Listar categorías de materiales",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Lista de categorías",
+      content: { "application/json": { schema: z.array(CategorySchema) } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/materials/categories",
+  summary: "Crear una nueva categoría",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            name: z.string().min(1),
+            description: z.string().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Categoría creada",
+      content: { "application/json": { schema: CategorySchema } },
+    },
+  },
+});
 
 // GET /api/materials/categories
 router.get(
@@ -92,6 +166,41 @@ router.delete(
   }
 );
 
+registry.registerPath({
+  method: "get",
+  path: "/materials",
+  summary: "Listar materiales con filtros",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: z.object({
+      category_id: z.string().uuid().optional(),
+      active: z.string().optional(),
+      search: z.string().optional(),
+      page: z.string().optional(),
+      limit: z.string().optional(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Lista de materiales paginada",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.array(MaterialSchema),
+            meta: z.object({
+              total: z.number(),
+              page: z.number(),
+              limit: z.number(),
+              totalPages: z.number(),
+            }),
+          }),
+        },
+      },
+    },
+  },
+});
+
 // GET /api/materials
 router.get(
   "/",
@@ -113,6 +222,24 @@ router.get(
   }
 );
 
+registry.registerPath({
+  method: "get",
+  path: "/materials/{id}",
+  summary: "Obtener detalle de un material",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+  },
+  responses: {
+    200: {
+      description: "Detalle del material",
+      content: { "application/json": { schema: MaterialSchema } },
+    },
+    404: { description: "Material no encontrado" },
+  },
+});
+
 // GET /api/materials/:id
 router.get(
   "/:id",
@@ -125,6 +252,41 @@ router.get(
     }
   }
 );
+
+
+registry.registerPath({
+  method: "post",
+  path: "/materials",
+  summary: "Crear un nuevo material",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            name: z.string().min(1),
+            sku: z.string().optional(),
+            location: z.string().optional(),
+            zone_id: z.string().uuid().nullable().optional(),
+            category_id: z.string().uuid(),
+            unit: z.string().optional(),
+            reference_price: z.number().optional(),
+            min_stock: z.number().optional(),
+            current_stock: z.number().optional(),
+            image_url: z.string().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Material creado",
+      content: { "application/json": { schema: MaterialSchema } },
+    },
+  },
+});
 
 // POST /api/materials
 const createMaterialSchema = z.object({
@@ -160,6 +322,41 @@ router.post(
     }
   }
 );
+
+registry.registerPath({
+  method: "put",
+  path: "/materials/{id}",
+  summary: "Actualizar un material",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            name: z.string().optional(),
+            sku: z.string().optional(),
+            location: z.string().optional(),
+            zone_id: z.string().uuid().nullable().optional(),
+            category_id: z.string().uuid().optional(),
+            unit: z.string().optional(),
+            reference_price: z.number().optional(),
+            min_stock: z.number().optional(),
+            active: z.boolean().optional(),
+            image_url: z.string().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Material actualizado",
+      content: { "application/json": { schema: MaterialSchema } },
+    },
+  },
+});
 
 // PUT /api/materials/:id
 const updateMaterialSchema = z.object({
@@ -197,17 +394,21 @@ router.put(
   }
 );
 
-// DELETE /api/materials/:id
-router.delete(
-  "/:id",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await materialService.deleteMaterial(req.params.id, req.user!.companyId);
-      res.json({ message: "Material deactivated" });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
+registry.registerPath({
+  method: "delete",
+  path: "/materials/{id}",
+  summary: "Desactivar un material",
+  tags: ["Materials"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+  },
+  responses: {
+    200: {
+      description: "Material desactivado con éxito",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
 
 export { router as materialRoutes };

@@ -4,12 +4,26 @@ import * as userService from "../services/user.service";
 import { authMiddleware } from "../middleware/auth";
 import { requireRole } from "../middleware/role";
 import { AppError } from "../middleware/errorHandler";
+import { registry, UserSchema } from "../lib/openapi";
 
 const router = Router();
-router.use(authMiddleware);
-router.use(requireRole("admin"));
 
 // GET /api/users
+registry.registerPath({
+  method: "get",
+  path: "/users",
+  summary: "Listar usuarios de la empresa",
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Lista de usuarios",
+      content: { "application/json": { schema: z.array(UserSchema) } },
+    },
+  },
+});
+router.use(authMiddleware);
+router.use(requireRole("admin"));
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await userService.listUsers(req.user!.companyId);
@@ -20,6 +34,33 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // POST /api/users
+registry.registerPath({
+  method: "post",
+  path: "/users",
+  summary: "Crear un nuevo colaborador",
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            email: z.string().email(),
+            name: z.string(),
+            password: z.string().min(6),
+            role: z.enum(["admin", "almacenista"]),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Usuario creado",
+      content: { "application/json": { schema: UserSchema } },
+    },
+  },
+});
 const createUserSchema = z.object({
   email: z.email().min(1, "El correo electrónico es requerido"),
   name: z.string().min(1, "El nombre es requerido"),
@@ -46,6 +87,34 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // PUT /api/users/:id
+registry.registerPath({
+  method: "put",
+  path: "/users/{id}",
+  summary: "Actualizar datos de un usuario",
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            name: z.string().optional(),
+            email: z.string().email().optional(),
+            role: z.enum(["admin", "almacenista"]).optional(),
+            password: z.string().min(6).optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Usuario actualizado",
+      content: { "application/json": { schema: UserSchema } },
+    },
+  },
+});
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.email("Email inválido").optional(),
@@ -69,6 +138,29 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // PATCH /api/users/:id/status
+registry.registerPath({
+  method: "patch",
+  path: "/users/{id}/status",
+  summary: "Activar/desactivar un usuario",
+  tags: ["Users"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({ active: z.boolean() }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Estatus actualizado",
+      content: { "application/json": { schema: UserSchema } },
+    },
+  },
+});
 const statusSchema = z.object({
   active: z.boolean(),
 });
