@@ -14,6 +14,7 @@ enum AppModule {
   clientes
   finanzas
   admin
+  warden
 }
 
 model Company {
@@ -31,6 +32,11 @@ model Company {
   warehouses WarehouseConfig[]
   units      Unit[]
 
+  conversations           Conversation[]
+  messages                Message[]
+  message_cards           MessageCard[]
+  warden_tool_invocations WardenToolInvocation[]
+  warden_audit            WardenAudit[]
 
   stripe_customer_id     String?
   stripe_subscription_id String?
@@ -51,11 +57,13 @@ model User {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  company       Company              @relation(fields: [company_id], references: [id])
-  movements     InventoryMovement[]  @relation("CreatedByUser")
-  reset_tokens  PasswordResetToken[]
+  company        Company              @relation(fields: [company_id], references: [id])
+  movements      InventoryMovement[]  @relation("CreatedByUser")
+  reset_tokens   PasswordResetToken[]
   refresh_tokens RefreshToken[]
 
+  conversations Conversation[]
+  warden_audit  WardenAudit[]
 
   @@map("users")
 }
@@ -115,11 +123,11 @@ model Material {
 }
 
 model WarehouseConfig {
-  id         String          @id @default(uuid()) @db.Uuid
-  company_id String          @db.Uuid
-  width_m    Float           @default(50)
-  height_m   Float           @default(30)
-  updated_at DateTime        @updatedAt
+  id         String   @id @default(uuid()) @db.Uuid
+  company_id String   @db.Uuid
+  width_m    Float    @default(50)
+  height_m   Float    @default(30)
+  updated_at DateTime @updatedAt
 
   company Company         @relation(fields: [company_id], references: [id])
   zones   WarehouseZone[]
@@ -218,18 +226,130 @@ model Unit {
   @@map("units")
 }
 
+// ============================================================================
+// Warden (feature 001-warden-foundations)
+// All tables tenant-scoped + RLS enforced. See migration 20260412000000.
+// ============================================================================
+
+model Conversation {
+  id         String    @id @default(uuid()) @db.Uuid
+  company_id String    @db.Uuid
+  user_id    String    @db.Uuid
+  title      String    @default("Nueva conversación")
+  preview    String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  company          Company                @relation(fields: [company_id], references: [id])
+  user             User                   @relation(fields: [user_id], references: [id])
+  messages         Message[]
+  tool_invocations WardenToolInvocation[]
+  audit            WardenAudit[]
+
+  @@index([company_id, user_id, updated_at(sort: Desc)])
+  @@index([company_id, updated_at(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
+  conversation_id String   @db.Uuid
+  role            String
+  content         String
+  module_hint     String?
+  status          String   @default("complete")
+  error_code      String?
+  created_at      DateTime @default(now())
+
+  company          Company                @relation(fields: [company_id], references: [id])
+  conversation     Conversation           @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  cards            MessageCard[]
+  tool_invocations WardenToolInvocation[]
+  audit            WardenAudit[]
+
+  @@index([conversation_id, created_at])
+  @@index([company_id, created_at(sort: Desc)])
+  @@map("messages")
+}
+
+model MessageCard {
+  id         String   @id @default(uuid()) @db.Uuid
+  company_id String   @db.Uuid
+  message_id String   @db.Uuid
+  card_type  String
+  payload    Json
+  position   Int      @default(0)
+  created_at DateTime @default(now())
+
+  company Company @relation(fields: [company_id], references: [id])
+  message Message @relation(fields: [message_id], references: [id], onDelete: Cascade)
+
+  @@index([message_id, position])
+  @@index([company_id, card_type])
+  @@map("message_cards")
+}
+
+model WardenToolInvocation {
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
+  conversation_id String   @db.Uuid
+  message_id      String?  @db.Uuid
+  tool_name       String
+  module          String
+  input_json      Json
+  output_json     Json?
+  ok              Boolean
+  error_code      String?
+  latency_ms      Int
+  created_at      DateTime @default(now())
+
+  company      Company      @relation(fields: [company_id], references: [id])
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  message      Message?     @relation(fields: [message_id], references: [id], onDelete: SetNull)
+
+  @@index([company_id, created_at(sort: Desc)])
+  @@index([company_id, tool_name, created_at(sort: Desc)])
+  @@map("warden_tool_invocations")
+}
+
+model WardenAudit {
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
+  user_id         String   @db.Uuid
+  conversation_id String   @db.Uuid
+  message_id      String?  @db.Uuid
+  kind            String
+  tool_name       String?
+  ok              Boolean
+  latency_ms      Int
+  input_tokens    Int?
+  output_tokens   Int?
+  error_code      String?
+  created_at      DateTime @default(now())
+
+  company      Company      @relation(fields: [company_id], references: [id])
+  user         User         @relation(fields: [user_id], references: [id])
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  message      Message?     @relation(fields: [message_id], references: [id], onDelete: SetNull)
+
+  @@index([company_id, created_at(sort: Desc)])
+  @@index([company_id, user_id, created_at(sort: Desc)])
+  @@map("warden_audit")
+}
+
 // Modelo para Seguridad (Refresh Tokens)
 model RefreshToken {
-  id           String   @id @default(uuid()) @db.Uuid
-  user_id      String   @db.Uuid
-  token_hash   String   @unique
-  expires_at   DateTime
-  revoked      Boolean  @default(false)
-  replaced_by  String?  @db.Uuid
-  created_at   DateTime @default(now())
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  token_hash  String   @unique
+  expires_at  DateTime
+  revoked     Boolean  @default(false)
+  replaced_by String?  @db.Uuid
+  created_at  DateTime @default(now())
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
 }
-
