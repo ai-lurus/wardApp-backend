@@ -3,8 +3,45 @@ import { z } from "zod";
 import * as authService from "../services/auth.service";
 import { authMiddleware } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
+import { registry, UserSchema } from "../lib/openapi";
 
 const router = Router();
+
+// Schemas para OpenAPI
+const AuthResponseSchema = registry.register(
+  "AuthResponse",
+  z.object({
+    token: z.string(),
+    user: UserSchema,
+  })
+);
+
+// Documentación de rutas
+registry.registerPath({
+  method: "post",
+  path: "/auth/login",
+  summary: "Iniciar sesión",
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            email: z.string().email().openapi({ example: "admin@ward.io" }),
+            password: z.string().min(1).openapi({ example: "password123" }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Login exitoso",
+      content: { "application/json": { schema: AuthResponseSchema } },
+    },
+    401: { description: "Credenciales inválidas" },
+  },
+});
 
 const loginSchema = z.object({
   email: z.email("Email inválido"),
@@ -37,6 +74,20 @@ router.post(
   }
 );
 
+registry.registerPath({
+  method: "post",
+  path: "/auth/refresh",
+  summary: "Refrescar token de acceso",
+  tags: ["Auth"],
+  responses: {
+    200: {
+      description: "Nuevo token generado",
+      content: { "application/json": { schema: z.object({ token: z.string() }) } },
+    },
+    401: { description: "Refresh token inválido o expirado" },
+  },
+});
+
 router.post("/refresh", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.cookies.refreshToken;
@@ -57,6 +108,19 @@ router.post("/refresh", async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
+registry.registerPath({
+  method: "post",
+  path: "/auth/logout",
+  summary: "Cerrar sesión",
+  tags: ["Auth"],
+  responses: {
+    200: {
+      description: "Sesión cerrada exitosamente",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
+
 router.post("/logout", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = req.cookies.refreshToken;
@@ -68,6 +132,21 @@ router.post("/logout", async (req: Request, res: Response, next: NextFunction) =
   } catch (err) {
     next(err);
   }
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/auth/me",
+  summary: "Obtener información del usuario actual",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Datos del usuario",
+      content: { "application/json": { schema: UserSchema } },
+    },
+    401: { description: "No autorizado" },
+  },
 });
 
 router.get(
@@ -82,6 +161,32 @@ router.get(
     }
   }
 );
+
+registry.registerPath({
+  method: "patch",
+  path: "/auth/change-password",
+  summary: "Cambiar contraseña",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            currentPassword: z.string(),
+            newPassword: z.string().min(6),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Contraseña cambiada exitosamente",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "La contraseña actual es requerida"),
@@ -106,6 +211,28 @@ router.patch(
     }
   }
 );
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/forgot-password",
+  summary: "Solicitar recuperación de contraseña",
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({ email: z.string().email() }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Enlace enviado si el correo existe",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
 
 const forgotPasswordSchema = z.object({
   email: z.email("Email inválido"),
@@ -133,6 +260,31 @@ router.post(
     }
   }
 );
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/reset-password",
+  summary: "Restablecer contraseña con token",
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            token: z.string(),
+            newPassword: z.string().min(6),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Contraseña restablecida exitosamente",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "El token es requerido"),
