@@ -61,6 +61,38 @@ Ver migraciones `20260309000000` y `20260309000001` como referencia exacta.
 
 ---
 
+### 3b. `ALTER COLUMN ... TYPE` **re-añade los FKs en la misma migración**
+
+Postmortem 2026-04-11: la migración `20260331000000_db_and_rls_fixes` cambió
+`company_id` de `TEXT` a `UUID` con `ALTER COLUMN ... TYPE UUID USING ...` en
+5 tablas (`users`, `material_categories`, `materials`, `warehouse_config`,
+`inventory_movements`). Postgres **auto-dropea todos los FK dependientes**
+cuando cambias el tipo de una columna, y esa migración nunca los recreó.
+Resultado: 5 FK `company_id -> companies.id` faltando en dev durante ~2
+semanas, Prisma marcó drift, y cada `prisma migrate dev` posterior rompía.
+Tuvimos que emitir `20260412000002_restore_company_fks` para repararlo.
+
+**Regla**: Cuando una migración hace `ALTER COLUMN ... TYPE ...` sobre una
+columna con FK (entrante o saliente), la misma migración DEBE:
+
+```sql
+-- 1. Drop explícito (documenta la intención, evita sorpresas)
+ALTER TABLE "t" DROP CONSTRAINT IF EXISTS "t_col_fkey";
+
+-- 2. Cambio de tipo
+ALTER TABLE "t" ALTER COLUMN "col" TYPE UUID USING "col"::UUID;
+
+-- 3. Re-add con el mismo ON DELETE/ON UPDATE que tenía antes
+ALTER TABLE "t"
+    ADD CONSTRAINT "t_col_fkey"
+    FOREIGN KEY ("col") REFERENCES "other"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+```
+
+Code review obligatorio para cualquier migración con `ALTER COLUMN ... TYPE`.
+
+---
+
 ### 4. Módulos dinámicos — usar `checkModuleAccess` middleware
 
 Antes de exponer un endpoint de un módulo, verificar que el tenant lo tiene activo:

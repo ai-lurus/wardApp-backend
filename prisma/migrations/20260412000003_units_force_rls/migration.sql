@@ -1,0 +1,24 @@
+-- Migration: Force RLS on units (Phase 2, T008a follow-up)
+--
+-- Postgres bypasses RLS for table owners by default. `ENABLE ROW LEVEL
+-- SECURITY` (migration 20260412000001) only protects non-owner sessions.
+-- In dev (Neon's `neondb_owner`) and in tests (docker-compose
+-- `postgres-test`'s `ward` user), Prisma connects AS the owner — so
+-- `prisma.unit.*` calls that skip `withTenant()` silently returned
+-- cross-tenant data, and the T008a regression test would give a false
+-- positive without FORCE.
+--
+-- `FORCE ROW LEVEL SECURITY` makes the policy apply to the owner too.
+--
+-- Known code paths that break with this flag and must be patched in the
+-- same PR:
+--   - scripts/seed-two-tenants.ts — prisma.unit.upsert() now wrapped in
+--     withTenant() (see commit patching seed-two-tenants.ts).
+--
+-- Not extended to the other 5 tenant tables yet (materials, users,
+-- material_categories, warehouse_config, inventory_movements,
+-- inventory_alerts). Those are owner-bypassable today — follow-up
+-- migration should widen this once production app paths are audited
+-- and any remaining `prisma.*` escape hatches are closed.
+
+ALTER TABLE "units" FORCE ROW LEVEL SECURITY;
