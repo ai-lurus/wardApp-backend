@@ -23,6 +23,7 @@ export async function withTenant<T>(
   fn: (tx: PrismaClient) => Promise<T>
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
+    console.log(companyId)
     await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
     return fn(tx as unknown as PrismaClient);
   });
