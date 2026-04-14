@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AppModule } from "@prisma/client";
 import { prisma } from "../lib/prisma";
-import { AppModule } from "@prisma/client";
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 

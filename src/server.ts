@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler";
+import swaggerUi from "swagger-ui-express";
+import { generateSwaggerSpec } from "./config/swagger";
 import { authRoutes } from "./routes/auth.routes";
 import { materialRoutes } from "./routes/material.routes";
 import { inventoryRoutes } from "./routes/inventory.routes";
@@ -34,6 +36,9 @@ app.use(cookieParser());
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Swagger Documentation
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(generateSwaggerSpec()));
 
 // Routes
 app.use("/api/auth", authRoutes);
