@@ -62,6 +62,11 @@ app.use("/api/warden", wardenRoutes);
 // Error handler
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`Server running on http://localhost:${env.PORT}`);
-});
+// In local dev, start the server. In Vercel, export the app instead.
+if (process.env.VERCEL !== "1") {
+  app.listen(env.PORT, () => {
+    console.log(`Server running on http://localhost:${env.PORT}`);
+  });
+}
+
+export default app;
