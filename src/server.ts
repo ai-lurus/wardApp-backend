@@ -22,7 +22,7 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: env.ALLOWED_ORIGINS.split(","),
+    origin: env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()),
     credentials: true,
   })
 );
