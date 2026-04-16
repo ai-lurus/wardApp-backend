@@ -14,26 +14,31 @@
 -- The FK definitions match the pattern used by every other tenant FK
 -- in this schema: ON UPDATE CASCADE ON DELETE RESTRICT.
 
+ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "users_company_id_fkey";
 ALTER TABLE "users"
     ADD CONSTRAINT "users_company_id_fkey"
     FOREIGN KEY ("company_id") REFERENCES "companies"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE "material_categories" DROP CONSTRAINT IF EXISTS "material_categories_company_id_fkey";
 ALTER TABLE "material_categories"
     ADD CONSTRAINT "material_categories_company_id_fkey"
     FOREIGN KEY ("company_id") REFERENCES "companies"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE "materials" DROP CONSTRAINT IF EXISTS "materials_company_id_fkey";
 ALTER TABLE "materials"
     ADD CONSTRAINT "materials_company_id_fkey"
     FOREIGN KEY ("company_id") REFERENCES "companies"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE "warehouse_config" DROP CONSTRAINT IF EXISTS "warehouse_config_company_id_fkey";
 ALTER TABLE "warehouse_config"
     ADD CONSTRAINT "warehouse_config_company_id_fkey"
     FOREIGN KEY ("company_id") REFERENCES "companies"("id")
     ON DELETE RESTRICT ON UPDATE CASCADE;
 
+ALTER TABLE "inventory_movements" DROP CONSTRAINT IF EXISTS "inventory_movements_company_id_fkey";
 ALTER TABLE "inventory_movements"
     ADD CONSTRAINT "inventory_movements_company_id_fkey"
     FOREIGN KEY ("company_id") REFERENCES "companies"("id")
