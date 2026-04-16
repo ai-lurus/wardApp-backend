@@ -17,6 +17,12 @@ import { uploadRoutes } from "./routes/upload.routes";
 import { unitRoutes } from "./routes/unit.routes";
 import { wardenRoutes } from "./routes/warden.routes";
 
+console.log("ENV CHECK:", {
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL: process.env.VERCEL
+});
+
 const app = express();
 
 // Middleware
