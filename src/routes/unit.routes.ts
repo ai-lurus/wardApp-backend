@@ -5,19 +5,64 @@ import { authMiddleware } from "../middleware/auth";
 import { checkModuleAccess } from "../middleware/tenant";
 import { AppError } from "../middleware/errorHandler";
 import { UnitStatus, UnitType } from "@prisma/client";
+import { registry } from "../lib/openapi";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModuleAccess("flotas"));
 
+// Schemas para OpenAPI
 const unitTypeEnum = z.enum(UnitType, {
   error: () => ({ message: "El tipo de unidad no es válido" }),
-});
+}).openapi("UnitType");
+
 const unitStatusEnum = z.enum(UnitStatus, {
   error: () => ({ message: "El tipo de estatus no es válido" }),
-});
+}).openapi("UnitStatus");
+
+const UnitSchema = registry.register(
+  "Unit",
+  z.object({
+    id: z.string().uuid().openapi({ example: "550e8400-e29b-41d4-a716-446655440000" }),
+    plate: z.string().openapi({ example: "ABC-1234" }),
+    brand: z.string().nullable().openapi({ example: "Kenworth" }),
+    model: z.string().nullable().openapi({ example: "T680" }),
+    year: z.number().nullable().openapi({ example: 2024 }),
+    type: unitTypeEnum,
+    axles: z.number().openapi({ example: 3 }),
+    status: unitStatusEnum,
+    vin: z.string().nullable().openapi({ example: "1HB5222X8CXXXXXXX" }),
+    insurance_expiry: z.date().nullable(),
+    fuel_efficiency_km_l: z.number().nullable(),
+    last_maintenance_date: z.date().nullable(),
+    notes: z.string().nullable(),
+    company_id: z.string().uuid(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+  })
+);
+
 const idParamSchema = z.object({
   id: z.string().uuid("El ID de la unidad no es un UUID válido"),
+});
+
+// Documentación de rutas
+registry.registerPath({
+  method: "get",
+  path: "/units/alerts/insurance",
+  summary: "Alertas de vencimiento de seguro",
+  tags: ["Units"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Lista de unidades con seguro próximo a vencer",
+      content: {
+        "application/json": {
+          schema: z.array(UnitSchema),
+        },
+      },
+    },
+  },
 });
 
 // GET /api/units/alerts/insurance
@@ -43,6 +88,27 @@ const getUnitsQuerySchema = z.object({
     .transform((v) => v === "true"),
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/units",
+  summary: "Listar unidades",
+  tags: ["Units"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: getUnitsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: "Lista de unidades",
+      content: {
+        "application/json": {
+          schema: z.array(UnitSchema),
+        },
+      },
+    },
+  },
+});
+
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, type, available_only } = getUnitsQuerySchema.parse(
@@ -62,6 +128,28 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
       next(err);
     }
   }
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/units/{id}",
+  summary: "Obtener unidad por ID",
+  tags: ["Units"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+  },
+  responses: {
+    200: {
+      description: "Detalle de la unidad",
+      content: {
+        "application/json": {
+          schema: UnitSchema,
+        },
+      },
+    },
+    404: { description: "Unidad no encontrada" },
+  },
 });
 
 // GET /api/units/:id
@@ -109,6 +197,33 @@ const createUnitSchema = z.object({
   notes: z.string().optional(),
 });
 
+registry.registerPath({
+  method: "post",
+  path: "/units",
+  summary: "Crear una nueva unidad",
+  tags: ["Units"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: createUnitSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Unidad creada con éxito",
+      content: {
+        "application/json": {
+          schema: UnitSchema,
+        },
+      },
+    },
+  },
+});
+
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = createUnitSchema.parse(req.body);
@@ -126,6 +241,34 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
 
 // PUT /api/units/:id
 const updateUnitSchema = createUnitSchema.partial();
+
+registry.registerPath({
+  method: "put",
+  path: "/units/{id}",
+  summary: "Actualizar una unidad existente",
+  tags: ["Units"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: updateUnitSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Unidad actualizada con éxito",
+      content: {
+        "application/json": {
+          schema: UnitSchema,
+        },
+      },
+    },
+  },
+});
 
 router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -150,6 +293,34 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
 // PATCH /api/units/:id/status
 const updateStatusSchema = z.object({
   status: unitStatusEnum,
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/units/{id}/status",
+  summary: "Actualizar estatus de una unidad",
+  tags: ["Units"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: updateStatusSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Estatus actualizado con éxito",
+      content: {
+        "application/json": {
+          schema: UnitSchema,
+        },
+      },
+    },
+  },
 });
 
 router.patch(
