@@ -1,5 +1,5 @@
 import request from "supertest";
-import { app } from "../../src/server";
+import app from "../../src/server";
 import { prisma, withTenant } from "../../src/lib/prisma";
 import { createTestTenant, cleanupTestData } from "./helpers/setup";
 
@@ -38,8 +38,8 @@ beforeAll(async () => {
 
   unitB = await prisma.unit.create({
     data: {
-      plate: "B-1234",
-      type: "camion",
+      plate: "123-ABC",
+      type: "caja_seca" as any,
       axles: 2,
       company_id: tenantB.company.id,
     },
@@ -49,8 +49,8 @@ beforeAll(async () => {
     data: {
       company_id: tenantB.company.id,
       material_id: materialB.id,
-      type: "entrada",
-      quantity: 10,
+      type: "entry" as any,
+      quantity: 50,
       created_by: tenantB.user.id,
     },
   });
