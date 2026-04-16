@@ -27,6 +27,11 @@ app.use(
   })
 );
 
+app.options("*", cors({
+  origin: env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()),
+  credentials: true,
+}));
+
 // Stripe webhook needs raw body
 app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
 
