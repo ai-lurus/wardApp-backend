@@ -42,10 +42,6 @@ export async function createTollbooth(companyId: string, data: CreateTollboothIn
 
 export async function updateTollbooth(companyId: string, id: string, data: UpdateTollboothInput) {
   return await withTenant(companyId, async (tx) => {
-    // Check if exists first to avoid cross-tenant updates 
-    // Prisma does not support where with composite explicitly without providing both parts if they are not unique together
-    // wait, I need to check schema if id + company_id is unique. It's not. 
-    // I should just use `id` and check if `company_id` matches, or use findFirst + update
     const tollbooth = await tx.tollbooth.findFirst({
       where: { id, company_id: companyId },
     });

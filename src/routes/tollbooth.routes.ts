@@ -72,7 +72,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = getTollboothsQuerySchema.parse(req.query);
     const result = await tollboothService.getTollbooths(req.user!.companyId, query);
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -109,7 +109,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
     if (!result) {
       throw new AppError(404, "Caseta no encontrada");
     }
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -157,7 +157,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = createTollboothSchema.parse(req.body);
     const result = await tollboothService.createTollbooth(req.user!.companyId, body);
-    res.status(201).json({ success: true, data: sanitizeResult(result) });
+    res.status(201).json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -201,7 +201,7 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
     if (!result) {
       throw new AppError(404, "Caseta no encontrada");
     }
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -237,7 +237,7 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
     if (!result) {
       throw new AppError(404, "Caseta no encontrada");
     }
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));

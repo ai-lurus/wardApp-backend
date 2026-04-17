@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { withTenant } from "../lib/prisma";
+import { AppError } from "../middleware/errorHandler";
 
 export type RouteTollboothInput = {
   tollbooth_id: string;
@@ -37,6 +38,7 @@ export async function getRoutes(companyId: string, options: { origin?: string; d
       where,
       include: {
         route_tollbooths: {
+          where: { tollbooth: { active: true } },
           orderBy: { order: "asc" },
           include: { tollbooth: true },
         },
@@ -52,6 +54,7 @@ export async function getRouteById(companyId: string, id: string) {
       where: { id, company_id: companyId },
       include: {
         route_tollbooths: {
+          where: { tollbooth: { active: true } },
           orderBy: { order: "asc" },
           include: { tollbooth: true },
         },
@@ -71,7 +74,7 @@ export async function createRoute(companyId: string, input: CreateRouteInput) {
         where: { id: { in: tollboothIds }, company_id: companyId, active: true },
       });
       if (existingTollbooths.length !== tollboothIds.length) {
-        throw new Error("Una o más casetas no existen o no están activas.");
+        throw new AppError(400, "Una o más casetas no existen o no están activas.");
       }
     }
 
@@ -111,7 +114,7 @@ export async function updateRoute(companyId: string, id: string, input: UpdateRo
         where: { id: { in: tollboothIds }, company_id: companyId, active: true },
       });
       if (existingTollbooths.length !== tollboothIds.length) {
-        throw new Error("Una o más casetas no existen o no están activas.");
+        throw new AppError(400, "Una o más casetas no existen o no están activas.");
       }
       
       // Update by deleting old associations and creating new ones
@@ -170,7 +173,7 @@ export async function getRouteCostPreview(companyId: string, id: string, axles: 
     });
 
     if (!route) {
-      throw new Error("Ruta no encontrada");
+      throw new AppError(404, "Ruta no encontrada");
     }
 
     let totalCost = 0;

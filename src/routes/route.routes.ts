@@ -11,11 +11,26 @@ router.use(authMiddleware);
 router.use(checkModuleAccess("operaciones"));
 
 const RouteTollboothSchema = registry.register(
-  "RouteTollbooth",
+  "RouteTollboothList",
   z.object({
-    tollbooth_id: z.string().uuid(),
+    id: z.string().uuid(),
+    name: z.string(),
     order: z.number(),
-    tollbooth: z.any().optional(), // Ideally referencing TollboothSchema but fine as any for preview
+  })
+);
+
+const RouteTollboothDetailedSchema = registry.register(
+  "RouteTollboothDetailed",
+  z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    order: z.number(),
+    cost_2_axles: z.number(),
+    cost_3_axles: z.number(),
+    cost_4_axles: z.number(),
+    cost_5_axles: z.number(),
+    cost_6_axles: z.number(),
+    cost_7_plus_axles: z.number(),
   })
 );
 
@@ -30,6 +45,20 @@ const RouteSchema = registry.register(
     estimated_duration_min: z.number().openapi({ example: 120 }),
     active: z.boolean().openapi({ example: true }),
     tollbooths: z.array(RouteTollboothSchema).optional(),
+  })
+);
+
+const RouteDetailedSchema = registry.register(
+  "RouteDetailed",
+  z.object({
+    id: z.string().uuid().openapi({ example: "234e5678-e89b-12d3-a456-426614174000" }),
+    name: z.string().openapi({ example: "Ruta 15D - CDMX a Puebla" }),
+    origin: z.string().openapi({ example: "Ciudad de México" }),
+    destination: z.string().openapi({ example: "Puebla" }),
+    distance_km: z.number().openapi({ example: 130.5 }),
+    estimated_duration_min: z.number().openapi({ example: 120 }),
+    active: z.boolean().openapi({ example: true }),
+    tollbooths: z.array(RouteTollboothDetailedSchema).optional(),
   })
 );
 
@@ -71,22 +100,36 @@ registry.registerPath({
   },
 });
 
-const sanitizePivot = (obj: any): any => {
+const sanitizePivot = (obj: any, detailed = false): any => {
   if (!obj || typeof obj !== "object") return obj;
-  const { id, route_id, created_at, updated_at, ...rest } = obj;
-  if (rest.tollbooth) {
-    rest.tollbooth = sanitizeResult(rest.tollbooth);
+  const base = {
+    id: obj.tollbooth_id,
+    name: obj.tollbooth?.name || "Caseta desconocida",
+    order: obj.order,
+  };
+
+  if (detailed && obj.tollbooth) {
+    return {
+      ...base,
+      cost_2_axles: obj.tollbooth.cost_2_axles,
+      cost_3_axles: obj.tollbooth.cost_3_axles,
+      cost_4_axles: obj.tollbooth.cost_4_axles,
+      cost_5_axles: obj.tollbooth.cost_5_axles,
+      cost_6_axles: obj.tollbooth.cost_6_axles,
+      cost_7_plus_axles: obj.tollbooth.cost_7_plus_axles,
+    };
   }
-  return rest;
+
+  return base;
 };
 
-const sanitizeResult = (obj: any): any => {
-  if (Array.isArray(obj)) return obj.map(sanitizeResult);
+const sanitizeResult = (obj: any, detailed = false): any => {
+  if (Array.isArray(obj)) return obj.map((item) => sanitizeResult(item, detailed));
   if (!obj || typeof obj !== "object") return obj;
   const { company_id, created_at, updated_at, route_tollbooths, ...rest } = obj;
   
   if (route_tollbooths) {
-    rest.tollbooths = route_tollbooths.map(sanitizePivot);
+    rest.tollbooths = route_tollbooths.map((rt: any) => sanitizePivot(rt, detailed));
   }
   
   return rest;
@@ -96,7 +139,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = getRoutesQuerySchema.parse(req.query);
     const result = await routeService.getRoutes(req.user!.companyId, query);
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -119,7 +162,7 @@ registry.registerPath({
     200: {
       description: "Detalle de la ruta",
       content: {
-        "application/json": { schema: RouteSchema },
+        "application/json": { schema: RouteDetailedSchema },
       },
     },
     404: { description: "Ruta no encontrada" },
@@ -133,7 +176,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
     if (!result) {
       throw new AppError(404, "Ruta no encontrada");
     }
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result, true));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -143,18 +186,30 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-const routeTollboothInputSchema = z.object({
-  tollbooth_id: z.string().uuid("ID de caseta inválido"),
-  order: z.number().int().min(0, "El orden debe ser mayor o igual a 0"),
-});
+const routeTollboothInputSchema = registry.register(
+  "RouteTollboothInput",
+  z.object({
+    id: z.string().uuid().openapi({ 
+      description: "ID de la caseta", 
+      example: "123e4567-e89b-12d3-a456-426614174000" 
+    }),
+    order: z.number().int().min(0, "El orden debe ser mayor o igual a 0").openapi({ 
+      description: "Orden de la caseta en la ruta",
+      example: 1 
+    }),
+  }).transform(data => ({
+    tollbooth_id: data.id,
+    order: data.order
+  }))
+);
 
 const createRouteSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
-  origin: z.string().min(1, "El origen es requerido"),
-  destination: z.string().min(1, "El destino es requerido"),
-  distance_km: z.number().min(0, "La distancia debe ser mayor a 0"),
-  estimated_duration_min: z.number().int().min(0),
-  active: z.boolean().optional(),
+  name: z.string().min(1, "El nombre es requerido").openapi({ example: "Ruta 15D - CDMX a Puebla" }),
+  origin: z.string().min(1, "El origen es requerido").openapi({ example: "Ciudad de México" }),
+  destination: z.string().min(1, "El destino es requerido").openapi({ example: "Puebla" }),
+  distance_km: z.number().min(0, "La distancia debe ser mayor a 0").openapi({ example: 130.5 }),
+  estimated_duration_min: z.number().int().min(0).openapi({ example: 120 }),
+  active: z.boolean().optional().openapi({ example: true }),
   tollbooths: z.array(routeTollboothInputSchema).default([]),
 });
 
@@ -185,7 +240,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = createRouteSchema.parse(req.body);
     const result = await routeService.createRoute(req.user!.companyId, body);
-    res.status(201).json({ success: true, data: sanitizeResult(result) });
+    res.status(201).json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -229,7 +284,7 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
     if (!result) {
       throw new AppError(404, "Ruta no encontrada");
     }
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -265,7 +320,7 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
     if (!result) {
       throw new AppError(404, "Ruta no encontrada");
     }
-    res.json({ success: true, data: sanitizeResult(result) });
+    res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
@@ -321,7 +376,7 @@ router.get("/:id/cost-preview", async (req: Request, res: Response, next: NextFu
     }
 
     const result = await routeService.getRouteCostPreview(req.user!.companyId, id, axles);
-    res.json({ success: true, data: result });
+    res.json(result);
   } catch (err) {
     if (err instanceof z.ZodError) {
       next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
