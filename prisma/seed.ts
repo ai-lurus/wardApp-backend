@@ -10,7 +10,23 @@ function daysAgo(days: number): Date {
 }
 
 async function main() {
-  // Create admin user
+  // 1. Create demo company
+  const companyId = "00000000-0000-0000-0000-000000000001";
+  const demoCompany = await prisma.company.upsert({
+    where: { slug: "demo" },
+    update: {},
+    create: {
+      id: companyId,
+      name: "Demo Company",
+      slug: "demo",
+      active: true,
+      active_modules: ["inventario", "admin", "warden"],
+    },
+  });
+
+  console.log("Ensured demo company exists:", demoCompany.slug);
+
+  // 2. Create admin user
   const passwordHash = await bcrypt.hash("demo123", 10);
   const admin = await prisma.user.upsert({
     where: { email: "admin@demo.com" },
@@ -20,12 +36,13 @@ async function main() {
       password_hash: passwordHash,
       name: "Admin Demo",
       role: "admin",
+      company_id: companyId,
     },
   });
 
   console.log("Created admin user:", admin.email);
 
-  // Create demo almacenista user
+  // 3. Create demo almacenista user
   const almacenistaHash = await bcrypt.hash("demo123", 10);
   await prisma.user.upsert({
     where: { email: "almacenista@demo.com" },
@@ -35,6 +52,7 @@ async function main() {
       password_hash: almacenistaHash,
       name: "Carlos Almacén",
       role: "almacenista",
+      company_id: companyId,
     },
   });
 
@@ -52,9 +70,17 @@ async function main() {
   const categories: Record<string, string> = {};
   for (const cat of categoryNames) {
     const created = await prisma.materialCategory.upsert({
-      where: { name: cat.name },
+      where: {
+        company_id_name: {
+          company_id: companyId,
+          name: cat.name,
+        },
+      },
       update: {},
-      create: cat,
+      create: {
+        ...cat,
+        company_id: companyId,
+      },
     });
     categories[cat.name] = created.id;
   }
@@ -83,6 +109,7 @@ async function main() {
           reference_price: mat.reference_price,
           min_stock: mat.min_stock,
           current_stock: mat.current_stock,
+          company_id: companyId,
         },
       });
     }
@@ -177,6 +204,7 @@ async function main() {
         reason: mov.reason,
         notes: mov.notes,
         created_by: admin.id,
+        company_id: companyId,
         movement_date: date,
         created_at: date,
       },
