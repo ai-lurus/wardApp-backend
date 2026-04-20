@@ -15,7 +15,8 @@
     "login-as": "tsx scripts/login-as.ts",
     "postinstall": "prisma generate",
     "lint": "eslint .",
-    "test:isolation": "jest tenant-isolation"
+    "test:isolation": "jest tenant-isolation",
+    "test:routes-tollbooths": "jest routes-tollbooths"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
