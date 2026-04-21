@@ -124,12 +124,12 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
 
 const createTollboothSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
-  cost_2_axles: z.number().min(0, "El costo debe ser mayor o igual a 0"),
-  cost_3_axles: z.number().min(0),
-  cost_4_axles: z.number().min(0),
-  cost_5_axles: z.number().min(0),
-  cost_6_axles: z.number().min(0),
-  cost_7_plus_axles: z.number().min(0),
+  cost_2_axles: z.number().min(1, "El costo debe ser mayor a 0"),
+  cost_3_axles: z.number().min(1, "El costo debe ser mayor a 0"),
+  cost_4_axles: z.number().min(1, "El costo debe ser mayor a 0"),
+  cost_5_axles: z.number().min(1, "El costo debe ser mayor a 0"),
+  cost_6_axles: z.number().min(1, "El costo debe ser mayor a 0"),
+  cost_7_plus_axles: z.number().min(1, "El costo debe ser mayor a 0"),
   active: z.boolean().optional(),
 });
 
