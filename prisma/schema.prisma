@@ -31,6 +31,7 @@ model Company {
   movements  InventoryMovement[]
   warehouses WarehouseConfig[]
   units      Unit[]
+  operators  Operator[]
 
   conversations           Conversation[]
   messages                Message[]
@@ -198,6 +199,65 @@ enum UnitStatus {
   en_viaje
   mantenimiento
   inactivo
+}
+
+enum OperatorStatus {
+  disponible
+  en_viaje
+  no_disponible
+  inactivo
+}
+
+enum OperatorDocumentType {
+  ine
+  contract
+  license
+}
+
+enum OperatorLicenseType {
+  A
+  B
+  C
+  D
+  E
+}
+
+model Operator {
+  id             String              @id @default(uuid()) @db.Uuid
+  company_id     String              @db.Uuid
+  name           String
+  license_number String
+  license_type   OperatorLicenseType
+  license_expiry DateTime
+  status         OperatorStatus      @default(disponible)
+  phone          String?
+  email          String?
+  created_at     DateTime            @default(now())
+  created_by     String?             @db.Uuid
+  updated_at     DateTime            @updatedAt
+  updated_by     String?             @db.Uuid
+  deleted_at     DateTime?
+
+  company   Company            @relation(fields: [company_id], references: [id])
+  documents OperatorDocument[]
+
+  @@unique([company_id, license_number])
+  @@map("operators")
+}
+
+model OperatorDocument {
+  id            String               @id @default(uuid()) @db.Uuid
+  operator_id   String               @db.Uuid
+  document_type OperatorDocumentType
+  file_url      String
+  expiry_date   DateTime?
+  created_at    DateTime             @default(now())
+  created_by    String?              @db.Uuid
+  deleted_at    DateTime?
+
+  operator Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  @@map("operator_documents")
 }
 
 // Modelo de Unidades

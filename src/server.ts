@@ -16,6 +16,7 @@ import { billingRoutes } from "./routes/billing.routes";
 import { uploadRoutes } from "./routes/upload.routes";
 import { unitRoutes } from "./routes/unit.routes";
 import { wardenRoutes } from "./routes/warden.routes";
+import { operatorRoutes } from "./routes/operator.routes";
 
 console.log("ENV CHECK:", {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
@@ -64,6 +65,7 @@ app.use("/api/billing", billingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/units", unitRoutes);
 app.use("/api/warden", wardenRoutes);
+app.use("/api/operators", operatorRoutes);
 
 // Error handler
 app.use(errorHandler);
