@@ -20,10 +20,13 @@ export type UpdateRouteInput = Partial<
   tollbooths?: RouteTollboothInput[];
 };
 
-export async function getRoutes(companyId: string, options: { origin?: string; destination?: string; active?: boolean } = {}) {
+export async function getRoutes(companyId: string, options: { name?: string; origin?: string; destination?: string; active?: boolean; search?: string } = {}) {
   return await withTenant(companyId, async (tx) => {
     const where: Prisma.RouteWhereInput = { company_id: companyId };
     
+    if (options.search) {
+      where.name = { contains: options.search, mode: "insensitive" };
+    }
     if (options.origin) {
       where.origin = { contains: options.origin, mode: "insensitive" };
     }

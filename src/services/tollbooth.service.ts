@@ -8,9 +8,13 @@ export type CreateTollboothInput = Omit<
 
 export type UpdateTollboothInput = Partial<CreateTollboothInput>;
 
-export async function getTollbooths(companyId: string, options: { active?: boolean } = {}) {
+export async function getTollbooths(companyId: string, options: { active?: boolean; search?: string } = {}) {
   return await withTenant(companyId, async (tx) => {
     const where: Prisma.TollboothWhereInput = { company_id: companyId };
+    
+    if (options.search) {
+      where.name = { contains: options.search, mode: "insensitive" };
+    }
     if (options.active !== undefined) {
       where.active = options.active;
     }

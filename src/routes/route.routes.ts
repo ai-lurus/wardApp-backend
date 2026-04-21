@@ -69,6 +69,7 @@ const idParamSchema = z.object({
 const getRoutesQuerySchema = z.object({
   origin: z.string().optional(),
   destination: z.string().optional(),
+  search: z.string().optional(),
   active: z
     .string()
     .optional()
@@ -86,7 +87,9 @@ registry.registerPath({
   tags: ["Routes"],
   security: [{ bearerAuth: [] }],
   request: {
-    query: getRoutesQuerySchema,
+    query: getRoutesQuerySchema.extend({
+      search: z.string().optional().openapi({ description: "Búsqueda por nombre de ruta" }),
+    }),
   },
   responses: {
     200: {

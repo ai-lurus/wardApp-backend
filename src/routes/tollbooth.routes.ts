@@ -30,6 +30,7 @@ const idParamSchema = z.object({
 });
 
 const getTollboothsQuerySchema = z.object({
+  search: z.string().optional(),
   active: z
     .string()
     .optional()
@@ -47,7 +48,9 @@ registry.registerPath({
   tags: ["Tollbooths"],
   security: [{ bearerAuth: [] }],
   request: {
-    query: getTollboothsQuerySchema,
+    query: getTollboothsQuerySchema.extend({
+      search: z.string().optional().openapi({ description: "Búsqueda por nombre de caseta" }),
+    }),
   },
   responses: {
     200: {
