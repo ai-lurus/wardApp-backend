@@ -10,6 +10,18 @@ function daysAgo(days: number): Date {
 }
 
 async function main() {
+  // Create Demo Company
+  const demoCompany = await prisma.company.upsert({
+    where: { slug: "demo-corp" },
+    update: {},
+    create: {
+      name: "Demo Corporation",
+      slug: "demo-corp",
+      active: true,
+      active_modules: ["inventario", "operaciones", "flotas"],
+    },
+  });
+
   // Create admin user
   const passwordHash = await bcrypt.hash("demo123", 10);
   const admin = await prisma.user.upsert({
@@ -20,12 +32,13 @@ async function main() {
       password_hash: passwordHash,
       name: "Admin Demo",
       role: "admin",
+      company_id: demoCompany.id,
     },
   });
 
   console.log("Created admin user:", admin.email);
 
-  // Create demo almacenista user
+  // 3. Create demo almacenista user
   const almacenistaHash = await bcrypt.hash("demo123", 10);
   await prisma.user.upsert({
     where: { email: "almacenista@demo.com" },
@@ -35,6 +48,7 @@ async function main() {
       password_hash: almacenistaHash,
       name: "Carlos Almacén",
       role: "almacenista",
+      company_id: demoCompany.id,
     },
   });
 
@@ -52,9 +66,9 @@ async function main() {
   const categories: Record<string, string> = {};
   for (const cat of categoryNames) {
     const created = await prisma.materialCategory.upsert({
-      where: { name: cat.name },
+      where: { company_id_name: { company_id: demoCompany.id, name: cat.name } },
       update: {},
-      create: cat,
+      create: { ...cat, company_id: demoCompany.id },
     });
     categories[cat.name] = created.id;
   }
@@ -77,12 +91,14 @@ async function main() {
     for (const mat of materials) {
       await prisma.material.create({
         data: {
+          company_id: demoCompany.id,
           name: mat.name,
           category_id: categories[mat.category],
           unit: mat.unit,
           reference_price: mat.reference_price,
           min_stock: mat.min_stock,
           current_stock: mat.current_stock,
+          company_id: companyId,
         },
       });
     }
@@ -166,6 +182,7 @@ async function main() {
     const date = daysAgo(mov.daysAgo);
     await prisma.inventoryMovement.create({
       data: {
+        company_id: demoCompany.id,
         material_id: matId[mov.material],
         type: mov.type,
         quantity: mov.quantity,
@@ -177,6 +194,7 @@ async function main() {
         reason: mov.reason,
         notes: mov.notes,
         created_by: admin.id,
+        company_id: companyId,
         movement_date: date,
         created_at: date,
       },

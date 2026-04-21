@@ -8,13 +8,15 @@
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "seed:super-admin": "tsx scripts/seed-super-admin.ts",
     "login-as": "tsx scripts/login-as.ts",
     "postinstall": "prisma generate",
     "lint": "eslint .",
-    "test:isolation": "jest tenant-isolation"
+    "test:isolation": "jest tenant-isolation",
+    "test:routes-tollbooths": "jest routes-tollbooths"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
