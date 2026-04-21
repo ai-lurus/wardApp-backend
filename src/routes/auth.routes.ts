@@ -3,6 +3,8 @@ import { z } from "zod";
 import * as authService from "../services/auth.service";
 import { authMiddleware } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
+import { loginGuard } from "../middleware/loginGuard";
+import * as securityService from "../services/security.service";
 import { registry, UserSchema } from "../lib/openapi";
 
 const router = Router();
@@ -50,10 +52,15 @@ const loginSchema = z.object({
 
 router.post(
   "/login",
+  loginGuard,
   async (req: Request, res: Response, next: NextFunction) => {
+    let rawIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "0.0.0.0";
+    const requestIp = rawIp.includes(",") ? rawIp.split(",")[0].trim() : rawIp;
     try {
       const body = loginSchema.parse(req.body);
       const result = await authService.login(body.email, body.password);
+      
+      await securityService.resetAttempts(requestIp, body.email);
       
       res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
@@ -63,7 +70,10 @@ router.post(
       });
       
       res.json({ token: result.token, user: result.user });
-    } catch (err) {
+    } catch (err: any) {
+      if (err instanceof AppError && err.statusCode === 401 && req.body?.email) {
+         await securityService.recordFailedAttempt(requestIp, req.body.email);
+      }
       if (err instanceof z.ZodError) {
         const message = err.issues.map((e: any) => e.message).join(', ');
         next(new AppError(400, message));

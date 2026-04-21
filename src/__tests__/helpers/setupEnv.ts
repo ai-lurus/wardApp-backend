@@ -3,6 +3,11 @@ import path from "path";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env.test") });
 
+
+if (process.env.DATABASE_URL_TEST && !process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+}
+
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -49,3 +54,4 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+

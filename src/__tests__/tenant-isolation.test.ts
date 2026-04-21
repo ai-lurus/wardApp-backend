@@ -38,8 +38,8 @@ beforeAll(async () => {
 
   unitB = await prisma.unit.create({
     data: {
-      plate: "123-ABC",
-      type: "caja_seca" as any,
+      plate: "B-1234",
+      type: "camion",
       axles: 2,
       company_id: tenantB.company.id,
     },
@@ -49,8 +49,8 @@ beforeAll(async () => {
     data: {
       company_id: tenantB.company.id,
       material_id: materialB.id,
-      type: "entry" as any,
-      quantity: 50,
+      type: "entrada",
+      quantity: 10,
       created_by: tenantB.user.id,
     },
   });
