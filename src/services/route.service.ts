@@ -76,6 +76,11 @@ export async function createRoute(companyId: string, input: CreateRouteInput) {
       const existingTollbooths = await tx.tollbooth.findMany({
         where: { id: { in: tollboothIds }, company_id: companyId, active: true },
       });
+      // Validar que no vengan casetas repetidas
+      const tollboothIdsSet = new Set(tollboothIds);
+      if (tollboothIdsSet.size !== tollboothIds.length) {
+        throw new AppError(400, "Verifique que no vengan casetas repetidas.");
+      }
       if (existingTollbooths.length !== tollboothIds.length) {
         throw new AppError(400, "Una o más casetas no existen o no están activas.");
       }
@@ -116,6 +121,11 @@ export async function updateRoute(companyId: string, id: string, input: UpdateRo
       const existingTollbooths = await tx.tollbooth.findMany({
         where: { id: { in: tollboothIds }, company_id: companyId, active: true },
       });
+      // Validar que no vengan casetas repetidas
+      const tollboothIdsSet = new Set(tollboothIds);
+      if (tollboothIdsSet.size !== tollboothIds.length) {
+        throw new AppError(400, "Verifique que no vengan casetas repetidas.");
+      }
       if (existingTollbooths.length !== tollboothIds.length) {
         throw new AppError(400, "Una o más casetas no existen o no están activas.");
       }
