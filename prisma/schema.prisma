@@ -31,6 +31,8 @@ model Company {
   movements  InventoryMovement[]
   warehouses WarehouseConfig[]
   units      Unit[]
+  routes     Route[]
+  tollbooths Tollbooth[]
 
   conversations           Conversation[]
   messages                Message[]
@@ -377,4 +379,61 @@ model SecurityLog {
   created_at DateTime @default(now())
 
   @@map("security_logs")
+}
+
+// ============================================================================
+// Operaciones (Cost Engine)
+// ============================================================================
+
+model Route {
+  id                     String   @id @default(uuid()) @db.Uuid
+  company_id             String   @db.Uuid
+  name                   String
+  origin                 String
+  destination            String
+  distance_km            Float
+  estimated_duration_min Int
+  active                 Boolean  @default(true)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  company                Company          @relation(fields: [company_id], references: [id])
+  route_tollbooths       RouteTollbooth[]
+
+  @@map("routes")
+}
+
+model Tollbooth {
+  id                String   @id @default(uuid()) @db.Uuid
+  company_id        String   @db.Uuid
+  name              String
+  cost_2_axles      Float
+  cost_3_axles      Float
+  cost_4_axles      Float
+  cost_5_axles      Float
+  cost_6_axles      Float
+  cost_7_plus_axles Float
+  active            Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  company           Company          @relation(fields: [company_id], references: [id])
+  route_tollbooths  RouteTollbooth[]
+
+  @@map("tollbooths")
+}
+
+model RouteTollbooth {
+  id           String   @id @default(uuid()) @db.Uuid
+  route_id     String   @db.Uuid
+  tollbooth_id String   @db.Uuid
+  order        Int
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  route        Route     @relation(fields: [route_id], references: [id], onDelete: Cascade)
+  tollbooth    Tollbooth @relation(fields: [tollbooth_id], references: [id], onDelete: Cascade)
+
+  @@unique([route_id, tollbooth_id])
+  @@map("route_tollbooths")
 }
