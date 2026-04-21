@@ -38,7 +38,7 @@ async function main() {
 
   console.log("Created admin user:", admin.email);
 
-  // Create demo almacenista user
+  // 3. Create demo almacenista user
   const almacenistaHash = await bcrypt.hash("demo123", 10);
   await prisma.user.upsert({
     where: { email: "almacenista@demo.com" },
@@ -98,6 +98,7 @@ async function main() {
           reference_price: mat.reference_price,
           min_stock: mat.min_stock,
           current_stock: mat.current_stock,
+          company_id: companyId,
         },
       });
     }
@@ -193,6 +194,7 @@ async function main() {
         reason: mov.reason,
         notes: mov.notes,
         created_by: admin.id,
+        company_id: companyId,
         movement_date: date,
         created_at: date,
       },
