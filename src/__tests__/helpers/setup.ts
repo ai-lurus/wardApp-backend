@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "../../../src/lib/prisma";
 import bcrypt from "bcrypt";
-import { env } from "../../../src/config/env";
+import { env } from "./setupEnv";
 import { Company, User } from "@prisma/client";
 
 interface TestTenant {
@@ -61,7 +61,7 @@ export async function cleanupTestData() {
   if (companyIds.length === 0) return;
 
   // Since prisma cascade deletes or some tables might not cascade, we might need to delete in order:
-  // InventoryMovements, Materials, MaterialCategories, Units, Users, Companies
+  // InventoryMovements, Materials, MaterialCategories, Units, RouteTollbooths, Routes, Tollbooths, Users, Companies
   await prisma.inventoryMovement.deleteMany({
     where: { company_id: { in: companyIds } }
   });
@@ -75,6 +75,22 @@ export async function cleanupTestData() {
   });
   
   await prisma.unit.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.routeTollbooth.deleteMany({
+    where: {
+      route: {
+        company_id: { in: companyIds }
+      }
+    }
+  });
+
+  await prisma.route.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.tollbooth.deleteMany({
     where: { company_id: { in: companyIds } }
   });
 
