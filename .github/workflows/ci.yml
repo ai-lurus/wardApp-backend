@@ -30,9 +30,10 @@ jobs:
 
       - name: Load .env.test
         run: |
+          cp .env.test.example .env.test
           grep -v '^#' .env.test | grep '=' >> $GITHUB_ENV
 
-      - name: Run isolation tests
-        run: npm run test:isolation
+      - name: Run all tests
+        run: npm test
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
