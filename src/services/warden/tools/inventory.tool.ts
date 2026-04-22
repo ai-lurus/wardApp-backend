@@ -3,6 +3,7 @@ import { register } from "./registry";
 
 const StockPredictionsArgs = z.object({
   solo_criticos: z.boolean().default(false),
+  nombre: z.string().optional(),
   limit: z.number().int().min(1).max(50).default(20),
 });
 
@@ -10,11 +11,16 @@ register({
   name: "stock_predictions",
   module: "inventario",
   description:
-    "Analiza el stock actual vs stock mínimo de materiales y detecta materiales en riesgo de agotarse.",
+    "Consulta el stock actual de materiales registrados en el sistema (incluye diésel, aceites, refacciones y cualquier insumo). Usa `nombre` para buscar un material específico por nombre parcial. Detecta también materiales en riesgo de agotarse.",
   argsSchema: StockPredictionsArgs,
   inputSchema: {
     type: "object",
     properties: {
+      nombre: {
+        type: "string",
+        description:
+          "Filtro parcial por nombre de material (ej. 'diesel', 'aceite', 'llanta'). Omitir para ver todos.",
+      },
       solo_criticos: {
         type: "boolean",
         description:
@@ -30,7 +36,13 @@ register({
     const parsed = StockPredictionsArgs.parse(args);
 
     const materials = await tx.material.findMany({
-      where: { company_id: ctx.companyId, active: true },
+      where: {
+        company_id: ctx.companyId,
+        active: true,
+        ...(parsed.nombre
+          ? { name: { contains: parsed.nombre, mode: "insensitive" } }
+          : {}),
+      },
       take: parsed.limit,
       orderBy: { name: "asc" },
       select: {

@@ -33,7 +33,9 @@ Reglas de operación — léelas antes de responder:
 
 5. NUNCA inventes datos. Si no hay información, dilo claramente y ofrece la consulta más cercana que sí puedas hacer.
 
-6. Para preguntas completamente fuera del dominio de flota y transporte, indica brevemente que estás especializado en operaciones de flota.`;
+6. Para preguntas completamente fuera del dominio de flota y transporte, indica brevemente que estás especializado en operaciones de flota.
+
+7. INVENTARIO INCLUYE COMBUSTIBLE Y CONSUMIBLES. Diésel, gasolina, aceite, aditivos y refacciones pueden estar registrados como materiales en el módulo de inventario. Cuando pregunten "¿cuánto diesel tengo?" o similares, SIEMPRE consulta primero stock_predictions con nombre="diesel" antes de concluir que no hay datos. Solo si el resultado viene vacío, informa que ese material no está registrado en el sistema.`;
 
 // Maximum tool-calling rounds before forcing a final text generation.
 // One additional LLM call always follows (the final text response), so
