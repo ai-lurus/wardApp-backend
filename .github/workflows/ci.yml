@@ -31,6 +31,7 @@ jobs:
       - name: Load .env.test
         run: |
           cp .env.test.example .env.test
+          cat .env.test
           grep -v '^#' .env.test | grep '=' >> $GITHUB_ENV
 
       - name: Run all tests
