@@ -12,18 +12,25 @@ router.use(authMiddleware);
 router.use(checkModuleAccess("flotas"));
 
 // Schemas para OpenAPI
-const unitTypeEnum = z.enum(UnitType, {
-  error: () => ({ message: "El tipo de unidad no es válido" }),
-}).openapi("UnitType");
+const unitTypeEnum = z
+  .enum(UnitType, {
+    error: () => ({ message: "El tipo de unidad no es válido" }),
+  })
+  .openapi("UnitType");
 
-const unitStatusEnum = z.enum(UnitStatus, {
-  error: () => ({ message: "El tipo de estatus no es válido" }),
-}).openapi("UnitStatus");
+const unitStatusEnum = z
+  .enum(UnitStatus, {
+    error: () => ({ message: "El tipo de estatus no es válido" }),
+  })
+  .openapi("UnitStatus");
 
 const UnitSchema = registry.register(
   "Unit",
   z.object({
-    id: z.string().uuid().openapi({ example: "550e8400-e29b-41d4-a716-446655440000" }),
+    id: z
+      .string()
+      .uuid()
+      .openapi({ example: "550e8400-e29b-41d4-a716-446655440000" }),
     plate: z.string().openapi({ example: "ABC-1234" }),
     brand: z.string().nullable().openapi({ example: "Kenworth" }),
     model: z.string().nullable().openapi({ example: "T680" }),
@@ -39,7 +46,7 @@ const UnitSchema = registry.register(
     company_id: z.string().uuid(),
     createdAt: z.date(),
     updatedAt: z.date(),
-  })
+  }),
 );
 
 const idParamSchema = z.object({
@@ -173,10 +180,27 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
 
 // POST /api/units
 const createUnitSchema = z.object({
-  plate: z.string().min(1, "La matrícula es requerida"),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  year: z.number().int().optional(),
+  plate: z
+    .string({
+      error: "La matrícula es requerida",
+    })
+    .trim()
+    .min(1, "La matrícula es requerida"),
+  brand: z
+    .string({ error: "La marca es requerida" })
+    .trim()
+    .min(1, "La marca es requerida"),
+  model: z
+    .string({ error: "El modelo es requerido" })
+    .trim()
+    .min(1, "El modelo es requerido"),
+  year: z
+    .number({
+      error: "El año es requerido",
+    })
+    .int("El año debe ser un número entero")
+    .min(1900, "El año no puede ser menor a 1900")
+    .max(new Date().getFullYear() + 1, "El año no puede ser en el futuro"),
   type: unitTypeEnum,
   axles: z
     .number({
@@ -187,14 +211,24 @@ const createUnitSchema = z.object({
     .max(9, "El máximo permitido son 9 ejes"),
   status: unitStatusEnum.optional(),
   vin: z
-    .string()
+    .string({
+      error: "El VIN es requerido",
+    })
+    .trim()
     .min(17, "El VIN debe tener al menos 17 caracteres")
-    .max(17, "El VIN debe tener máximo 17 caracteres")
-    .optional(),
-  insurance_expiry: z.string().pipe(z.coerce.date()).optional(),
-  fuel_efficiency_km_l: z.number().optional(),
-  last_maintenance_date: z.string().pipe(z.coerce.date()).optional(),
-  notes: z.string().optional(),
+    .max(17, "El VIN debe tener máximo 17 caracteres"),
+  insurance_expiry: z.coerce.date({
+    error: "La fecha de seguro debe ser válida",
+  }),
+  fuel_efficiency_km_l: z
+    .number({
+      error: "El rendimiento es requerido",
+    })
+    .min(0.1, "El rendimiento debe ser mayor a 0"),
+  last_maintenance_date: z.coerce.date({
+    error: "La fecha de mantenimiento debe ser válida",
+  }),
+  notes: z.string().trim().optional(),
 });
 
 registry.registerPath({
@@ -274,11 +308,7 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const body = updateUnitSchema.parse(req.body);
-    const unit = await unitService.updateUnit(
-      req.user!.companyId,
-      id,
-      body,
-    );
+    const unit = await unitService.updateUnit(req.user!.companyId, id, body);
     res.json(unit);
   } catch (err) {
     if (err instanceof z.ZodError) {
