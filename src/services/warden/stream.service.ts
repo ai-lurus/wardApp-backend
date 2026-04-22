@@ -70,6 +70,7 @@ export async function runStream(params: RunStreamParams): Promise<void> {
   // ── Phase 1: DB setup ────────────────────────────────────────────────────
   let convId: string;
   let isNewConversation: boolean;
+  let newConvTitle: string | undefined;
   let assistantMessageId: string;
   let historyMessages: MessageParam[];
 
@@ -77,9 +78,11 @@ export async function runStream(params: RunStreamParams): Promise<void> {
     const setup = await withTenant(companyId, async (tx) => {
       let cid = params.conversationId;
       let newConv = false;
+      let convTitle: string | undefined;
 
       if (!cid) {
-        const conv = await createConversation(tx, { companyId, userId });
+        convTitle = text.slice(0, 60).trim();
+        const conv = await createConversation(tx, { companyId, userId, title: convTitle });
         cid = conv.id;
         newConv = true;
       } else {
@@ -97,11 +100,12 @@ export async function runStream(params: RunStreamParams): Promise<void> {
       await appendUserMessage(tx, { companyId, conversationId: cid, text, moduleHint });
       const assistantMsg = await createAssistantMessage(tx, { companyId, conversationId: cid });
 
-      return { cid, newConv, history, assistantMsgId: assistantMsg.id };
+      return { cid, newConv, convTitle, history, assistantMsgId: assistantMsg.id };
     });
 
     convId = setup.cid;
     isNewConversation = setup.newConv;
+    newConvTitle = setup.convTitle;
     assistantMessageId = setup.assistantMsgId;
     historyMessages = setup.history;
   } catch (err) {
@@ -117,7 +121,7 @@ export async function runStream(params: RunStreamParams): Promise<void> {
   res.flushHeaders();
 
   if (isNewConversation) {
-    res.write(`event: conversation\ndata: ${JSON.stringify({ id: convId })}\n\n`);
+    res.write(`event: conversation\ndata: ${JSON.stringify({ id: convId, title: newConvTitle })}\n\n`);
   }
   res.write(`event: message_start\ndata: ${JSON.stringify({ messageId: assistantMessageId })}\n\n`);
 
