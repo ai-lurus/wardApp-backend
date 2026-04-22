@@ -1,5 +1,7 @@
-// Warden tool registry — placeholder. Individual tools
-// (get_unit_health, get_operator_scoring, get_diesel_anomalies, etc.)
-// land in Phase 5 (US3, T069–T078). Each tool MUST resolve tenant from
-// request context, never from tool arguments (Principle V).
-export {};
+// Import each tool file to trigger its top-level register() calls.
+// Must be imported before any route handler accesses the tool registry.
+import "./fleets.tool";
+import "./finance.tool";
+import "./operators.tool";
+import "./inventory.tool";
+import "./compliance.tool";

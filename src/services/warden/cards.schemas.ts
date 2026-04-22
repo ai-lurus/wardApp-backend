@@ -36,8 +36,8 @@ const IsoDateSchema = z
 export const OperadorCardSchema = z.object({
   nombre: z.string().min(1).max(80),
   scoring: z.number().int().min(0).max(100),
-  viajesActivos: z.number().int().min(0),
-  licencia: IsoDateSchema,
+  viajesActivos: z.number().int().min(0).default(0),
+  licencia: IsoDateSchema.nullable().optional(),
   trend: z.enum(["up", "down", "stable"]),
 });
 
