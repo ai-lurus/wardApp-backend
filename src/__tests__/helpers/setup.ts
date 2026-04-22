@@ -29,7 +29,7 @@ export async function createTestTenant(name: string): Promise<TestTenant> {
   const user = await prisma.user.create({
     data: {
       company_id: company.id,
-      email: `admin_${uniqueId}@${name.toLowerCase()}.test`,
+      email: `admin_${uniqueId}@${name.toLowerCase()}.com`,
       password_hash,
       name: `Admin ${name}`,
       role: "admin",
@@ -65,15 +65,15 @@ export async function cleanupTestData() {
   await prisma.inventoryMovement.deleteMany({
     where: { company_id: { in: companyIds } }
   });
-  
+
   await prisma.material.deleteMany({
     where: { company_id: { in: companyIds } }
   });
-  
+
   await prisma.materialCategory.deleteMany({
     where: { company_id: { in: companyIds } }
   });
-  
+
   await prisma.unit.deleteMany({
     where: { company_id: { in: companyIds } }
   });

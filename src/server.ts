@@ -73,7 +73,7 @@ app.use("/api/routes", routeRoutes);
 app.use(errorHandler);
 
 // In local dev, start the server. In Vercel, export the app instead.
-if (process.env.VERCEL !== "1") {
+if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "test") {
   app.listen(env.PORT, () => {
     console.log(`Server running on http://localhost:${env.PORT}`);
   });
