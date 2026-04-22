@@ -41,7 +41,20 @@ export const OperadorCardSchema = z.object({
   trend: z.enum(["up", "down", "stable"]),
 });
 
-export const CardTypeSchema = z.enum(["reporte", "alerta", "operador"]);
+export const MaterialCardSchema = z.object({
+  nombre: z.string().min(1).max(80),
+  sku: z.string().nullable().optional(),
+  unidad: z.string().min(1).max(20),
+  stock_actual: z.number(),
+  stock_minimo: z.number(),
+  estado: z.enum(["ok", "bajo", "critico", "agotado"]),
+  valor_estimado: z.string().nullable().optional(),
+  consumo_diario_promedio: z.number().nullable().optional(),
+  dias_cobertura: z.number().int().nullable().optional(),
+  ultima_entrada_dias: z.number().int().nullable().optional(),
+});
+
+export const CardTypeSchema = z.enum(["reporte", "alerta", "operador", "material"]);
 export type CardType = z.infer<typeof CardTypeSchema>;
 
 // Discriminated union over `card_type` + its payload. The persistence layer
@@ -52,11 +65,13 @@ export const CardSchema = z.discriminatedUnion("card_type", [
   z.object({ card_type: z.literal("reporte"), payload: ReporteCardSchema }),
   z.object({ card_type: z.literal("alerta"), payload: AlertaCardSchema }),
   z.object({ card_type: z.literal("operador"), payload: OperadorCardSchema }),
+  z.object({ card_type: z.literal("material"), payload: MaterialCardSchema }),
 ]);
 
 export type ReporteCard = z.infer<typeof ReporteCardSchema>;
 export type AlertaCard = z.infer<typeof AlertaCardSchema>;
 export type OperadorCard = z.infer<typeof OperadorCardSchema>;
+export type MaterialCard = z.infer<typeof MaterialCardSchema>;
 export type Card = z.infer<typeof CardSchema>;
 
 // Per-type schema lookup — used by the tool executor when a tool returns
@@ -65,6 +80,7 @@ export const CARD_PAYLOAD_SCHEMAS: Record<CardType, z.ZodTypeAny> = {
   reporte: ReporteCardSchema,
   alerta: AlertaCardSchema,
   operador: OperadorCardSchema,
+  material: MaterialCardSchema,
 };
 
 export function validateCardPayload(

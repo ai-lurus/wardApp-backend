@@ -35,7 +35,7 @@ export interface WardenToolResult {
   // Optional structured card emitted alongside the text result. Validated
   // by `validateCardPayload` in `cards.schemas.ts` before persistence.
   card?: {
-    card_type: "reporte" | "alerta" | "operador";
+    card_type: "reporte" | "alerta" | "operador" | "material";
     payload: unknown;
   };
 }

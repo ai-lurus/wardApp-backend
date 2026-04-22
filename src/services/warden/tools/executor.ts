@@ -42,7 +42,7 @@ export type ExecuteToolResult =
       toolName: string;
       output: unknown;
       card?: {
-        card_type: "reporte" | "alerta" | "operador";
+        card_type: "reporte" | "alerta" | "operador" | "material";
         payload: unknown;
       };
       latencyMs: number;
