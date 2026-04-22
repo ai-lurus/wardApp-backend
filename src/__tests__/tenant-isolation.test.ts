@@ -1,5 +1,5 @@
 import request from "supertest";
-import { app } from "../../src/server";
+import app from "../../src/server";
 import { prisma, withTenant } from "../../src/lib/prisma";
 import { createTestTenant, cleanupTestData } from "./helpers/setup";
 

@@ -8,12 +8,15 @@
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "seed:super-admin": "tsx scripts/seed-super-admin.ts",
+    "login-as": "tsx scripts/login-as.ts",
     "postinstall": "prisma generate",
     "lint": "eslint .",
-    "test:isolation": "jest tenant-isolation"
+    "test:isolation": "jest tenant-isolation",
+    "test:routes-tollbooths": "jest routes-tollbooths"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -22,6 +25,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.88.0",
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@google-cloud/storage": "^7.19.0",
     "@prisma/client": "^6.19.2",
@@ -47,6 +51,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.2.3",
+    "@types/supertest": "^7.2.0",
     "@types/swagger-ui-express": "^4.1.8",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
@@ -59,5 +64,12 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.58.0"
+  },
+  "overrides": {
+    "path-to-regexp": "^0.1.13",
+    "fast-xml-parser": "^5.5.7",
+    "effect": "^3.20.0",
+    "defu": "^6.1.5",
+    "minimatch": "^3.1.4"
   }
 }
