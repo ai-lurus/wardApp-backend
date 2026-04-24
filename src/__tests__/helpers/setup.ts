@@ -62,6 +62,14 @@ export async function cleanupTestData() {
 
   // Since prisma cascade deletes or some tables might not cascade, we might need to delete in order:
   // InventoryMovements, Materials, MaterialCategories, Units, RouteTollbooths, Routes, Tollbooths, Users, Companies
+  await prisma.tripCostDetail.deleteMany({
+    where: { trip: { company_id: { in: companyIds } } }
+  });
+
+  await prisma.trip.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
   await prisma.inventoryMovement.deleteMany({
     where: { company_id: { in: companyIds } }
   });

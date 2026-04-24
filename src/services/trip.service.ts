@@ -196,8 +196,7 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
     }
 
     // Update actual costs if provided
-    let newActualCost = trip.actual_cost || 0;
-    let costDetailUpdate: Prisma.TripCostDetailUpdateInput = {};
+    const costDetailUpdate: Prisma.TripCostDetailUpdateInput = {};
     let shouldUpdateCostDetail = false;
 
     if (data.actual_tollbooth_cost !== undefined) {
@@ -217,8 +216,7 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
       const tollbooth = data.actual_tollbooth_cost ?? trip.cost_detail?.tollbooth_cost ?? 0;
       const fuel = data.actual_fuel_cost ?? trip.cost_detail?.fuel_cost ?? 0;
       const extras = data.actual_extras_cost ?? trip.cost_detail?.extras_cost ?? 0;
-      newActualCost = tollbooth + fuel + extras;
-      updateData.actual_cost = newActualCost;
+      updateData.actual_cost = tollbooth + fuel + extras;
       updateData.cost_detail = {
         update: costDetailUpdate
       };
