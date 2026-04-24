@@ -68,6 +68,7 @@ const updateStatusSchema = z.object({
   actual_tollbooth_cost: z.number().optional(),
   actual_fuel_cost: z.number().optional(),
   actual_extras_cost: z.number().optional(),
+  entry_cost: z.number().optional()
 });
 
 const getTripsQuerySchema = z.object({
