@@ -19,6 +19,7 @@ import { wardenRoutes } from "./routes/warden.routes";
 import { operatorRoutes } from "./routes/operator.routes";
 import { tollboothRoutes } from "./routes/tollbooth.routes";
 import { routeRoutes } from "./routes/route.routes";
+import { tripRoutes } from "./routes/trip.routes";
 
 console.log("ENV CHECK:", {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
@@ -70,6 +71,7 @@ app.use("/api/warden", wardenRoutes);
 app.use("/api/operators", operatorRoutes);
 app.use("/api/tollbooths", tollboothRoutes);
 app.use("/api/routes", routeRoutes);
+app.use("/api/trips", tripRoutes);
 
 // Error handler
 app.use(errorHandler);

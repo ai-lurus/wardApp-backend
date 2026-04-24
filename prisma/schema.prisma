@@ -34,6 +34,7 @@ model Company {
   operators  Operator[]
   routes     Route[]
   tollbooths Tollbooth[]
+  trips      Trip[]
 
   conversations           Conversation[]
   messages                Message[]
@@ -210,6 +211,13 @@ enum OperatorStatus {
   inactivo
 }
 
+enum TripStatus {
+  programado
+  en_curso
+  completado
+  cancelado
+}
+
 enum OperatorDocumentType {
   ine
   contract
@@ -242,6 +250,7 @@ model Operator {
 
   company   Company            @relation(fields: [company_id], references: [id])
   documents OperatorDocument[]
+  trips     Trip[]
 
   @@unique([company_id, license_number])
   @@map("operators")
@@ -282,6 +291,7 @@ model Unit {
   updated_at            DateTime   @updatedAt
 
   company Company @relation(fields: [company_id], references: [id])
+  trips   Trip[]
 
   @@unique([company_id, plate])
   @@unique([company_id, vin])
@@ -459,6 +469,7 @@ model Route {
 
   company                Company          @relation(fields: [company_id], references: [id])
   route_tollbooths       RouteTollbooth[]
+  trips                  Trip[]
 
   @@map("routes")
 }
@@ -496,4 +507,46 @@ model RouteTollbooth {
 
   @@unique([route_id, tollbooth_id])
   @@map("route_tollbooths")
+}
+
+model Trip {
+  id             String     @id @default(uuid()) @db.Uuid
+  company_id     String     @db.Uuid
+  route_id       String     @db.Uuid
+  unit_id        String     @db.Uuid
+  operator_id    String     @db.Uuid
+  status         TripStatus @default(programado)
+  scheduled_date DateTime
+  departure_time DateTime?
+  arrival_time   DateTime?
+  estimated_cost Float?
+  actual_cost    Float?
+  notes          String?
+  entry_cost     Float?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+
+  company        Company    @relation(fields: [company_id], references: [id])
+  route          Route      @relation(fields: [route_id], references: [id])
+  unit           Unit       @relation(fields: [unit_id], references: [id])
+  operator       Operator   @relation(fields: [operator_id], references: [id])
+  cost_detail    TripCostDetail?
+
+  @@map("trips")
+}
+
+model TripCostDetail {
+  id                       String   @id @default(uuid()) @db.Uuid
+  trip_id                  String   @unique @db.Uuid
+  tollbooth_cost           Float    @default(0)
+  fuel_cost                Float    @default(0)
+  fuel_type                String?
+  extras_cost              Float    @default(0)
+  estimated_tollbooth_cost Float    @default(0)
+  estimated_fuel_cost      Float    @default(0)
+  estimated_extras_cost    Float    @default(0)
+
+  trip                     Trip     @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+
+  @@map("trip_cost_details")
 }
