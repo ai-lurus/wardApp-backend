@@ -5,12 +5,47 @@ import { authMiddleware } from "../middleware/auth";
 import { checkModuleAccess } from "../middleware/tenant";
 import { AppError } from "../middleware/errorHandler";
 import { TripStatus } from "@prisma/client";
+import { registry } from "../lib/openapi";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModuleAccess("operaciones"));
 
-const tripStatusEnum = z.nativeEnum(TripStatus);
+const tripStatusEnum = z.nativeEnum(TripStatus).openapi("TripStatus");
+
+const TripCostDetailSchema = z.object({
+  id: z.string().uuid(),
+  trip_id: z.string().uuid(),
+  tollbooth_cost: z.number(),
+  fuel_cost: z.number(),
+  fuel_type: z.string().nullable(),
+  extras_cost: z.number(),
+  estimated_tollbooth_cost: z.number(),
+  estimated_fuel_cost: z.number(),
+  estimated_extras_cost: z.number(),
+});
+
+const TripSchema = registry.register(
+  "Trip",
+  z.object({
+    id: z.string().uuid(),
+    company_id: z.string().uuid(),
+    route_id: z.string().uuid(),
+    unit_id: z.string().uuid(),
+    operator_id: z.string().uuid(),
+    status: tripStatusEnum,
+    scheduled_date: z.date(),
+    departure_time: z.date().nullable(),
+    arrival_time: z.date().nullable(),
+    estimated_cost: z.number().nullable(),
+    actual_cost: z.number().nullable(),
+    notes: z.string().nullable(),
+    entry_cost: z.number().nullable(),
+    created_at: z.date(),
+    updated_at: z.date(),
+    cost_detail: TripCostDetailSchema.optional(),
+  })
+);
 
 const createTripSchema = z.object({
   route_id: z.string().uuid("El ID de la ruta no es un UUID válido"),
@@ -48,6 +83,27 @@ const idParamSchema = z.object({
   id: z.string().uuid("El ID del viaje no es un UUID válido"),
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/trips",
+  summary: "Listar viajes",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: getTripsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: "Lista de viajes",
+      content: {
+        "application/json": {
+          schema: z.array(TripSchema),
+        },
+      },
+    },
+  },
+});
+
 // GET /api/trips
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -62,6 +118,28 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
       next(err);
     }
   }
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/trips/{id}",
+  summary: "Obtener viaje por ID",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+  },
+  responses: {
+    200: {
+      description: "Detalle del viaje",
+      content: {
+        "application/json": {
+          schema: TripSchema,
+        },
+      },
+    },
+    404: { description: "Viaje no encontrado" },
+  },
 });
 
 // GET /api/trips/:id
@@ -80,6 +158,34 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+registry.registerPath({
+  method: "post",
+  path: "/trips",
+  summary: "Crear un nuevo viaje",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: createTripSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Viaje creado con éxito",
+      content: {
+        "application/json": {
+          schema: TripSchema,
+        },
+      },
+    },
+    400: { description: "Error de validación o recurso no disponible" },
+  },
+});
+
 // POST /api/trips
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -94,6 +200,35 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       next(err);
     }
   }
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/trips/{id}/status",
+  summary: "Actualizar estatus de un viaje",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: updateStatusSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Estatus actualizado con éxito",
+      content: {
+        "application/json": {
+          schema: TripSchema,
+        },
+      },
+    },
+    404: { description: "Viaje no encontrado" },
+  },
 });
 
 // PATCH /api/trips/:id/status
