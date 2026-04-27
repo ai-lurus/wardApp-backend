@@ -87,7 +87,7 @@ export async function createTrip(companyId: string, data: CreateTripDto) {
         entry_cost: data.entry_cost,
         estimated_cost,
         actual_cost,
-        status: TripStatus.en_curso, // Default to en_curso to match unit/operator status
+        status: TripStatus.programado,
         cost_detail: {
           create: {
             tollbooth_cost,
@@ -162,6 +162,7 @@ export interface UpdateTripStatusDto {
   actual_tollbooth_cost?: number;
   actual_fuel_cost?: number;
   actual_extras_cost?: number;
+  entry_cost?: number;
 }
 
 export async function updateTripStatus(companyId: string, tripId: string, data: UpdateTripStatusDto) {
