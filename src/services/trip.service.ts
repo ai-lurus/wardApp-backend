@@ -159,10 +159,6 @@ export async function getTripById(companyId: string, id: string) {
 
 export interface UpdateTripStatusDto {
   status: TripStatus;
-  actual_tollbooth_cost?: number;
-  actual_fuel_cost?: number;
-  actual_extras_cost?: number;
-  entry_cost?: number;
 }
 
 export async function updateTripStatus(companyId: string, tripId: string, data: UpdateTripStatusDto) {
@@ -174,9 +170,13 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
 
     if (!trip) throw new AppError(404, "Viaje no encontrado");
 
+    if (data.status === TripStatus.completado) {
+      throw new AppError(400, "Estatus no permitido. Para completar el viaje, utiliza el endpoint /api/trips/:id/complete");
+    }
+
     // Free unit and operator if transitioning to completado or cancelado
-    if (data.status === TripStatus.completado || data.status === TripStatus.cancelado) {
-      if (trip.status !== TripStatus.completado && trip.status !== TripStatus.cancelado) {
+    if (data.status === TripStatus.cancelado) {
+      if (trip.status !== TripStatus.cancelado) {
         await tx.unit.update({
           where: { id: trip.unit_id },
           data: { status: UnitStatus.disponible }
@@ -184,7 +184,7 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
         await tx.operator.update({
           where: { id: trip.operator_id },
           data: { status: OperatorStatus.disponible }
-        });
+        })
       }
     }
 
@@ -192,36 +192,11 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
       status: data.status,
     };
 
-    if (data.status === TripStatus.completado) {
-      updateData.arrival_time = new Date();
+    if (data.status === TripStatus.en_curso) {
+      updateData.departure_time = new Date();
     }
 
-    // Update actual costs if provided
-    const costDetailUpdate: Prisma.TripCostDetailUpdateInput = {};
-    let shouldUpdateCostDetail = false;
 
-    if (data.actual_tollbooth_cost !== undefined) {
-      costDetailUpdate.tollbooth_cost = data.actual_tollbooth_cost;
-      shouldUpdateCostDetail = true;
-    }
-    if (data.actual_fuel_cost !== undefined) {
-      costDetailUpdate.fuel_cost = data.actual_fuel_cost;
-      shouldUpdateCostDetail = true;
-    }
-    if (data.actual_extras_cost !== undefined) {
-      costDetailUpdate.extras_cost = data.actual_extras_cost;
-      shouldUpdateCostDetail = true;
-    }
-
-    if (shouldUpdateCostDetail) {
-      const tollbooth = data.actual_tollbooth_cost ?? trip.cost_detail?.tollbooth_cost ?? 0;
-      const fuel = data.actual_fuel_cost ?? trip.cost_detail?.fuel_cost ?? 0;
-      const extras = data.actual_extras_cost ?? trip.cost_detail?.extras_cost ?? 0;
-      updateData.actual_cost = tollbooth + fuel + extras;
-      updateData.cost_detail = {
-        update: costDetailUpdate
-      };
-    }
 
     return tx.trip.update({
       where: { id: tripId },
@@ -235,3 +210,63 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
     });
   });
 }
+
+export interface CompleteTripDto {
+  actual_tollbooth_cost: number;
+  actual_fuel_cost: number;
+  actual_extras_cost: number;
+  entry_cost: number;
+}
+export async function completeTrip(companyId: string, tripId: string, data: CompleteTripDto) {
+  return withTenant(companyId, async (tx) => {
+    const trip = await tx.trip.findFirst({
+      where: { id: tripId, company_id: companyId },
+      include: { cost_detail: true }
+    });
+
+    if (!trip) throw new AppError(404, "Viaje no encontrado");
+
+    // Free unit and operator if transitioning to completado or cancelado
+    if (trip.status === TripStatus.completado || trip.status === TripStatus.cancelado) {
+      throw new AppError(400, "El viaje ya se encuentra completado o cancelado");
+    }
+    const tollbooth_cost = data.actual_tollbooth_cost;
+    const fuel_cost = data.actual_fuel_cost;
+    const extras_cost = data.actual_extras_cost;
+    const actual_cost = tollbooth_cost + fuel_cost + extras_cost;
+
+    const updateData: Prisma.TripUpdateInput = {
+      status: TripStatus.completado,
+      actual_cost,
+      arrival_time: new Date(),
+      cost_detail: {
+        update: {
+          tollbooth_cost,
+          fuel_cost,
+          extras_cost,
+        }
+      }
+    };
+
+    await tx.unit.update({
+      where: { id: trip.unit_id },
+      data: { status: UnitStatus.disponible }
+    });
+
+    await tx.operator.update({
+      where: { id: trip.operator_id },
+      data: { status: OperatorStatus.disponible }
+    });
+    return tx.trip.update({
+      where: { id: tripId },
+      data: updateData,
+      include: {
+        cost_detail: true,
+        unit: true,
+        operator: true,
+      }
+    });
+  });
+}
+
+

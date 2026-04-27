@@ -64,11 +64,14 @@ const createTripSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: tripStatusEnum,
-  actual_tollbooth_cost: z.number().optional(),
-  actual_fuel_cost: z.number().optional(),
-  actual_extras_cost: z.number().optional(),
-  entry_cost: z.number().optional()
+  status: tripStatusEnum
+});
+
+const completeTripSchema = z.object({
+  actual_tollbooth_cost: z.number(),
+  actual_fuel_cost: z.number(),
+  actual_extras_cost: z.number(),
+  entry_cost: z.number()
 });
 
 const getTripsQuerySchema = z.object({
@@ -238,6 +241,52 @@ router.patch("/:id/status", async (req: Request, res: Response, next: NextFuncti
     const { id } = idParamSchema.parse(req.params);
     const body = updateStatusSchema.parse(req.body);
     const trip = await tripService.updateTripStatus(req.user!.companyId, id, body);
+    res.json(trip);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const message = err.issues.map((e: any) => e.message).join(", ");
+      next(new AppError(400, message));
+    } else {
+      next(err);
+    }
+  }
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/trips/{id}/completed",
+  summary: "Completar un viaje",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: completeTripSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Viaje completado con éxito",
+      content: {
+        "application/json": {
+          schema: TripSchema,
+        },
+      },
+    },
+    404: { description: "Viaje no encontrado" },
+  },
+});
+
+// PATCH /api/trips/:id/completed
+router.patch("/:id/completed", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const body = completeTripSchema.parse(req.body);
+    const trip = await tripService.completeTrip(req.user!.companyId, id, body);
     res.json(trip);
   } catch (err) {
     if (err instanceof z.ZodError) {
