@@ -239,6 +239,7 @@ export async function completeTrip(companyId: string, tripId: string, data: Comp
       status: TripStatus.completado,
       actual_cost,
       arrival_time: new Date(),
+      entry_cost: data.entry_cost,
       cost_detail: {
         update: {
           tollbooth_cost,
