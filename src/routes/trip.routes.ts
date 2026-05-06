@@ -1,6 +1,10 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as tripService from "../services/trip.service";
+import * as routeService from "../services/route.service";
+import * as unitService from "../services/unit.service";
+import * as settingsService from "../services/settings.service";
+import { calculateTripCost } from "../services/cost-calculator.service";
 import { authMiddleware } from "../middleware/auth";
 import { checkModuleAccess } from "../middleware/tenant";
 import { AppError } from "../middleware/errorHandler";
@@ -288,6 +292,84 @@ router.patch("/:id/completed", async (req: Request, res: Response, next: NextFun
     const body = completeTripSchema.parse(req.body);
     const trip = await tripService.completeTrip(req.user!.companyId, id, body);
     res.json(trip);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const message = err.issues.map((e: any) => e.message).join(", ");
+      next(new AppError(400, message));
+    } else {
+      next(err);
+    }
+  }
+});
+
+const costPreviewBodySchema = z.object({
+  routeId: z.string().uuid(),
+  unitId: z.string().uuid(),
+  extras: z.array(z.object({
+    name: z.string().min(1),
+    amount: z.number().positive()
+  })).optional().default([])
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/trips/cost-preview",
+  summary: "Vista previa de costos del viaje",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: costPreviewBodySchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Desglose de costos",
+      content: {
+        "application/json": {
+          schema: z.object({
+            tolls: z.number(),
+            fuel: z.number(),
+            insurance: z.number(),
+            extras: z.number(),
+            total: z.number(),
+            breakdown: z.array(z.object({
+              category: z.string(),
+              name: z.string(),
+              amount: z.number()
+            }))
+          }),
+        },
+      },
+    },
+  },
+});
+
+router.post("/cost-preview", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { routeId, unitId, extras } = costPreviewBodySchema.parse(req.body);
+    const companyId = req.user!.companyId;
+
+    const route = await routeService.getRouteById(companyId, routeId);
+    if (!route) throw new AppError(404, "Ruta no encontrada");
+
+    const unit = await unitService.getUnitById(companyId, unitId);
+    if (!unit) throw new AppError(404, "Unidad no encontrada");
+
+    const settings = await settingsService.getSettings(companyId);
+
+    const costBreakdown = calculateTripCost({
+      route,
+      unit,
+      settings,
+      extras
+    });
+
+    res.json(costBreakdown);
   } catch (err) {
     if (err instanceof z.ZodError) {
       const message = err.issues.map((e: any) => e.message).join(", ");

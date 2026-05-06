@@ -20,7 +20,7 @@ import { operatorRoutes } from "./routes/operator.routes";
 import { tollboothRoutes } from "./routes/tollbooth.routes";
 import { routeRoutes } from "./routes/route.routes";
 import { tripRoutes } from "./routes/trip.routes";
-
+import { settingsRoutes } from "./routes/settings.routes";
 console.log("ENV CHECK:", {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
   NODE_ENV: process.env.NODE_ENV,
@@ -72,6 +72,7 @@ app.use("/api/operators", operatorRoutes);
 app.use("/api/tollbooths", tollboothRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/trips", tripRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Error handler
 app.use(errorHandler);

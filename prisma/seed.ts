@@ -98,7 +98,6 @@ async function main() {
           reference_price: mat.reference_price,
           min_stock: mat.min_stock,
           current_stock: mat.current_stock,
-          company_id: companyId,
         },
       });
     }
@@ -194,7 +193,6 @@ async function main() {
         reason: mov.reason,
         notes: mov.notes,
         created_by: admin.id,
-        company_id: companyId,
         movement_date: date,
         created_at: date,
       },
