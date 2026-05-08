@@ -1,5 +1,11 @@
 # Ward.io Backend — Contexto para IA
 
+## 🗺️ Graphify: Mapa de Código
+Este repositorio utiliza **Graphify** para mapeo estructural. 
+- **Reporte de Nodos:** [GRAPH_REPORT.md](./GRAPH_REPORT.md)
+- **Grafo Interactivo (Local):** [graph.html](../.graphify/backend/graph.html)
+- **Uso:** Consulta `GRAPH_REPORT.md` para entender las relaciones entre rutas, servicios y el God Node `withTenant()`.
+
 ## Qué es este repo
 Backend del SaaS multitenant Ward.io para empresas de transporte de carga.
 Stack: **Node.js 20 + Express + TypeScript + Prisma + PostgreSQL**.
