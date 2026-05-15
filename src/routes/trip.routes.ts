@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as tripService from "../services/trip.service";
+import * as tripStatusService from "../services/trip-status.service";
 import * as routeService from "../services/route.service";
 import * as unitService from "../services/unit.service";
 import * as settingsService from "../services/settings.service";
@@ -28,6 +29,14 @@ const TripCostDetailSchema = z.object({
   estimated_fuel_cost: z.number(),
   estimated_extras_cost: z.number(),
 });
+const TripStatusHistorySchema = z.object({
+  id: z.string().uuid(),
+  trip_id: z.string().uuid(),
+  status: tripStatusEnum,
+  actor_id: z.string().uuid(),
+  cancellation_reason: z.string().nullable(),
+  created_at: z.date(),
+});
 
 const TripSchema = registry.register(
   "Trip",
@@ -45,9 +54,11 @@ const TripSchema = registry.register(
     actual_cost: z.number().nullable(),
     notes: z.string().nullable(),
     entry_cost: z.number().nullable(),
+    cancellation_reason: z.string().nullable(),
     created_at: z.date(),
     updated_at: z.date(),
     cost_detail: TripCostDetailSchema.optional(),
+    history: z.array(TripStatusHistorySchema).optional(),
   })
 );
 
@@ -68,7 +79,14 @@ const createTripSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: tripStatusEnum
+  status: tripStatusEnum,
+  departure_time: z.string().datetime().optional(),
+  arrival_time: z.string().datetime().optional(),
+  actual_cost: z.number().optional(),
+  cancellation_reason: z.string().optional(),
+  tollbooth_cost: z.number().optional(),
+  fuel_cost: z.number().optional(),
+  extras_cost: z.number().optional(),
 });
 
 const completeTripSchema = z.object({
@@ -244,7 +262,13 @@ router.patch("/:id/status", async (req: Request, res: Response, next: NextFuncti
   try {
     const { id } = idParamSchema.parse(req.params);
     const body = updateStatusSchema.parse(req.body);
-    const trip = await tripService.updateTripStatus(req.user!.companyId, id, body);
+    const trip = await tripStatusService.transitionTripStatus(
+      req.user!.companyId,
+      id,
+      body.status,
+      req.user!.id,
+      body
+    );
     res.json(trip);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -290,7 +314,18 @@ router.patch("/:id/completed", async (req: Request, res: Response, next: NextFun
   try {
     const { id } = idParamSchema.parse(req.params);
     const body = completeTripSchema.parse(req.body);
-    const trip = await tripService.completeTrip(req.user!.companyId, id, body);
+    const trip = await tripStatusService.transitionTripStatus(
+      req.user!.companyId,
+      id,
+      TripStatus.completado,
+      req.user!.id,
+      {
+        actual_cost: body.actual_tollbooth_cost + body.actual_fuel_cost + body.actual_extras_cost,
+        tollbooth_cost: body.actual_tollbooth_cost,
+        fuel_cost: body.actual_fuel_cost,
+        extras_cost: body.actual_extras_cost,
+      }
+    );
     res.json(trip);
   } catch (err) {
     if (err instanceof z.ZodError) {

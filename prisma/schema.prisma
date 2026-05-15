@@ -540,6 +540,7 @@ model Trip {
   actual_cost    Float?
   notes          String?
   entry_cost     Float?
+  cancellation_reason String?
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
 
@@ -548,6 +549,7 @@ model Trip {
   unit           Unit       @relation(fields: [unit_id], references: [id])
   operator       Operator   @relation(fields: [operator_id], references: [id])
   cost_detail    TripCostDetail?
+  history        TripStatusHistory[]
 
   @@map("trips")
 }
@@ -566,4 +568,17 @@ model TripCostDetail {
   trip                     Trip     @relation(fields: [trip_id], references: [id], onDelete: Cascade)
 
   @@map("trip_cost_details")
+}
+
+model TripStatusHistory {
+  id                  String     @id @default(uuid()) @db.Uuid
+  trip_id             String     @db.Uuid
+  status              TripStatus
+  actor_id            String     @db.Uuid
+  cancellation_reason String?
+  created_at          DateTime   @default(now())
+
+  trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+
+  @@map("trip_status_history")
 }
