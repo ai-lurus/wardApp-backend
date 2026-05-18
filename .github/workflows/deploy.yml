@@ -1,0 +1,77 @@
+name: Deploy Backend to K8s Cluster
+
+on:
+  push:
+    branches:
+      - k8s
+
+env:
+  REGISTRY: 100.81.167.109:30500
+  IMAGE_NAME: wardapp-backend
+  K8S_NAMESPACE: ward
+  DEPLOYMENT_NAME: wardapp-backend
+  CONTAINER_NAME: api
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Obtener el código fuente de la rama k8s
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Conectarse a la red VPN de Tailscale
+      - name: Setup Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          version: latest
+
+      # 3. Configurar Docker local para permitir el registro HTTP inseguro
+      - name: Configure Insecure Registry
+        run: |
+          sudo bash -c 'echo "{\"insecure-registries\": [\"100.81.167.109:30500\"]}" > /etc/docker/daemon.json'
+          sudo systemctl restart docker
+
+      # 4. Iniciar sesión en el registro privado a través de la VPN
+      - name: Login to Local Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      # 5. Compilar y subir la imagen Docker de backend
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.prod
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      # 6. Configurar kubeconfig para interactuar con el clúster
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      # 7. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
+      - name: Run Prisma Database Migrations
+        run: |
+          echo "Running migrations in active backend pod..."
+          kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/${{ env.DEPLOYMENT_NAME }} -- npx prisma migrate deploy
+
+      # 8. Actualizar la imagen en el Deployment de Kubernetes
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+            ${{ env.CONTAINER_NAME }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n ${{ env.K8S_NAMESPACE }}
+          
+          # Verificar que el rollout termine exitosamente
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.K8S_NAMESPACE }}

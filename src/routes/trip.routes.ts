@@ -266,7 +266,7 @@ router.patch("/:id/status", async (req: Request, res: Response, next: NextFuncti
       req.user!.companyId,
       id,
       body.status,
-      req.user!.id,
+      req.user!.userId,
       body
     );
     res.json(trip);
@@ -318,7 +318,7 @@ router.patch("/:id/completed", async (req: Request, res: Response, next: NextFun
       req.user!.companyId,
       id,
       TripStatus.completado,
-      req.user!.id,
+      req.user!.userId,
       {
         actual_cost: body.actual_tollbooth_cost + body.actual_fuel_cost + body.actual_extras_cost,
         tollbooth_cost: body.actual_tollbooth_cost,
