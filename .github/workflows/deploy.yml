@@ -22,26 +22,33 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Conectarse a la red VPN de Tailscale
+      # 2. Configurar Node.js y activar la caché de dependencias de npm para acelerar el build
+      - name: Setup Node.js with Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      # 3. Conectarse a la red VPN de Tailscale
       - name: Setup Tailscale
         uses: tailscale/github-action@v3
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
           version: latest
 
-      # 3. Configurar Docker local para permitir el registro HTTP inseguro (demonio moby)
+      # 4. Configurar Docker local para permitir el registro HTTP inseguro (demonio moby)
       - name: Configure Insecure Registry
         run: |
           sudo bash -c 'echo "{\"insecure-registries\": [\"100.81.167.109:30500\"]}" > /etc/docker/daemon.json'
           sudo systemctl restart docker
 
-      # 4. Iniciar sesión en el registro privado a través de la VPN
+      # 5. Iniciar sesión en el registro privado a través de la VPN
       - name: Login to Local Registry
         run: |
           echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY }} \
             -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-      # 5. Compilar y subir la imagen de forma nativa (evita congelamientos de red de Buildx)
+      # 6. Compilar y subir la imagen de forma nativa
       - name: Build and Push Docker Image
         run: |
           echo "Building production image..."
@@ -55,20 +62,20 @@ jobs:
           echo "Pushing image tag latest..."
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-      # 6. Configurar kubeconfig para interactuar con el clúster
+      # 7. Configurar kubeconfig para interactuar con el clúster
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      # 7. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
+      # 8. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
       - name: Run Prisma Database Migrations
         run: |
           echo "Running migrations in active backend pod..."
           kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/${{ env.DEPLOYMENT_NAME }} -- npx prisma migrate deploy
 
-      # 8. Actualizar la imagen en el Deployment de Kubernetes (usando la IP de red física)
+      # 9. Actualizar la imagen en el Deployment de Kubernetes (usando la IP de red física)
       - name: Deploy to Kubernetes
         run: |
           kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
