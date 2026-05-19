@@ -37,48 +37,38 @@ jobs:
 
       # 4. Iniciar sesión en el registro privado a través de la VPN
       - name: Login to Local Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY }} \
+            -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
 
-      # 5. Configurar constructor de Docker Buildx y declarar explícitamente el registro HTTP inseguro para BuildKit
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          config-inline: |
-            [registry."100.81.167.109:30500"]
-              http = true
-              insecure = true
-
-      # 6. Compilar y subir la imagen Docker de backend usando la caché de GitHub Actions (gha)
+      # 5. Compilar y subir la imagen de forma nativa (evita congelamientos de red de Buildx)
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile.prod
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          echo "Building production image..."
+          docker build -f Dockerfile.prod \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
+          
+          echo "Pushing image tag ${{ github.sha }}..."
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          
+          echo "Pushing image tag latest..."
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-      # 7. Configurar kubeconfig para interactuar con el clúster
+      # 6. Configurar kubeconfig para interactuar con el clúster
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      # 8. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
+      # 7. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
       - name: Run Prisma Database Migrations
         run: |
           echo "Running migrations in active backend pod..."
           kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/${{ env.DEPLOYMENT_NAME }} -- npx prisma migrate deploy
 
-      # 9. Actualizar la imagen en el Deployment de Kubernetes (usando la IP de red física)
+      # 8. Actualizar la imagen en el Deployment de Kubernetes (usando la IP de red física)
       - name: Deploy to Kubernetes
         run: |
           kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
