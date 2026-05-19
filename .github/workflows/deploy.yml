@@ -7,6 +7,7 @@ on:
 
 env:
   REGISTRY: 100.81.167.109:30500
+  K8S_REGISTRY: 148.213.8.22:30500
   IMAGE_NAME: wardapp-backend
   K8S_NAMESPACE: ward
   DEPLOYMENT_NAME: wardapp-backend
@@ -42,7 +43,11 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      # 5. Compilar y subir la imagen Docker de backend
+      # 5. Configurar constructor de Docker con soporte de caché avanzado (Buildx)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 6. Compilar y subir la imagen Docker de backend usando la caché de GitHub Actions (gha)
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
@@ -52,25 +57,27 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # 6. Configurar kubeconfig para interactuar con el clúster
+      # 7. Configurar kubeconfig para interactuar con el clúster
       - name: Setup kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      # 7. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
+      # 8. Ejecutar migraciones de Prisma directamente sobre el pod activo (antes del despliegue)
       - name: Run Prisma Database Migrations
         run: |
           echo "Running migrations in active backend pod..."
           kubectl exec -n ${{ env.K8S_NAMESPACE }} deployment/${{ env.DEPLOYMENT_NAME }} -- npx prisma migrate deploy
 
-      # 8. Actualizar la imagen en el Deployment de Kubernetes
+      # 9. Actualizar la imagen en el Deployment de Kubernetes (usando la IP de red física)
       - name: Deploy to Kubernetes
         run: |
           kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
-            ${{ env.CONTAINER_NAME }}=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            ${{ env.CONTAINER_NAME }}=${{ env.K8S_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -n ${{ env.K8S_NAMESPACE }}
           
           # Verificar que el rollout termine exitosamente
