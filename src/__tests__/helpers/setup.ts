@@ -62,11 +62,67 @@ export async function cleanupTestData() {
 
   // Since prisma cascade deletes or some tables might not cascade, we might need to delete in order:
   // InventoryMovements, Materials, MaterialCategories, Units, RouteTollbooths, Routes, Tollbooths, Users, Companies
+  await prisma.messageCard.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.message.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.wardenAudit.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.wardenToolInvocation.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.conversation.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.tenantSettings.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.warehouseZone.deleteMany({
+    where: { config: { company_id: { in: companyIds } } }
+  });
+
+  await prisma.warehouseConfig.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.operatorDocument.deleteMany({
+    where: { operator: { company_id: { in: companyIds } } }
+  });
+
   await prisma.tripCostDetail.deleteMany({
     where: { trip: { company_id: { in: companyIds } } }
   });
 
+  await prisma.tripStatusHistory.deleteMany({
+    where: { trip: { company_id: { in: companyIds } } }
+  });
+
   await prisma.trip.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.operator.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.routeTollbooth.deleteMany({
+    where: { route: { company_id: { in: companyIds } } }
+  });
+
+  await prisma.route.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
+  await prisma.tollbooth.deleteMany({
     where: { company_id: { in: companyIds } }
   });
 
@@ -83,22 +139,6 @@ export async function cleanupTestData() {
   });
 
   await prisma.unit.deleteMany({
-    where: { company_id: { in: companyIds } }
-  });
-
-  await prisma.routeTollbooth.deleteMany({
-    where: {
-      route: {
-        company_id: { in: companyIds }
-      }
-    }
-  });
-
-  await prisma.route.deleteMany({
-    where: { company_id: { in: companyIds } }
-  });
-
-  await prisma.tollbooth.deleteMany({
     where: { company_id: { in: companyIds } }
   });
 

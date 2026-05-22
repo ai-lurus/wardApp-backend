@@ -14,6 +14,11 @@ let inventoryMovementB: any;
 beforeAll(async () => {
   await cleanupTestData();
 
+  // Ensure ward_app_user has necessary schema privileges (in case db reset dropped public schema)
+  await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON SCHEMA public TO ward_app_user;`);
+  await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ward_app_user;`);
+  await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ward_app_user;`);
+
   tenantA = await createTestTenant("A");
   tenantB = await createTestTenant("B");
 
@@ -178,11 +183,16 @@ describe("Tenant Isolation", () => {
   describe("withTenant Prisma Extension", () => {
     it("should return an empty array and not expose data for an invalid company_id", async () => {
       const fakedUUID = "11111111-1111-1111-1111-111111111111";
-      const result = await withTenant(fakedUUID, async (tx) => {
-        return tx.material.findMany();
-      });
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(0);
+      await prisma.$executeRawUnsafe(`SET ROLE ward_app_user`);
+      try {
+        const result = await withTenant(fakedUUID, async (tx) => {
+          return tx.unit.findMany();
+        });
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBe(0);
+      } finally {
+        await prisma.$executeRawUnsafe(`RESET ROLE`);
+      }
     });
   });
 });

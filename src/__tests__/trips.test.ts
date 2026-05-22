@@ -125,7 +125,7 @@ describe("Trips API", () => {
         });
 
       expect(res.status).toBe(201);
-      expect(res.body.status).toBe(TripStatus.en_curso);
+      expect(res.body.status).toBe(TripStatus.programado);
       expect(res.body.estimated_cost).toBe(650);
 
       // Verify resource statuses updated
@@ -149,7 +149,7 @@ describe("Trips API", () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain("disponible");
+      expect(res.body.error).toContain("disponible");
     });
 
     it("should prevent cross-tenant resource assignment", async () => {
@@ -184,21 +184,32 @@ describe("Trips API", () => {
     });
   });
 
-  describe("PATCH /api/trips/:id/status", () => {
+  describe("PATCH /api/trips/:id/status & completed", () => {
     it("should update status and release resources on completion", async () => {
       const listRes = await request(app)
         .get("/api/trips")
         .set("Authorization", `Bearer ${tenantA.token}`);
       const tripA = listRes.body[0];
 
-      const res = await request(app)
+      // First transition trip to en_curso (in transit)
+      const startRes = await request(app)
         .patch(`/api/trips/${tripA.id}/status`)
         .set("Authorization", `Bearer ${tenantA.token}`)
         .send({
-          status: TripStatus.completado,
+          status: TripStatus.en_curso,
+        });
+      expect(startRes.status).toBe(200);
+      expect(startRes.body.status).toBe(TripStatus.en_curso);
+
+      // Now complete the trip using /completed endpoint
+      const res = await request(app)
+        .patch(`/api/trips/${tripA.id}/completed`)
+        .set("Authorization", `Bearer ${tenantA.token}`)
+        .send({
           actual_fuel_cost: 520,
           actual_tollbooth_cost: 100,
           actual_extras_cost: 60,
+          entry_cost: 0,
         });
 
       expect(res.status).toBe(200);

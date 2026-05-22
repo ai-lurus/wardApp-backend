@@ -50,6 +50,22 @@ const loginSchema = z.object({
   password: z.string().min(1, "La contraseña es requerida"),
 });
 
+// Helper: build consistent cookie options based on environment
+// In production/staging the frontend runs on a different Vercel subdomain,
+// so sameSite must be "none" (+ Secure) to allow cross-site cookie delivery.
+// In development sameSite: "lax" is sufficient (same-origin).
+function refreshCookieOptions() {
+  const isProd =
+    process.env.NODE_ENV === "production" ||
+    process.env.NODE_ENV === "staging";
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
+}
+
 router.post(
   "/login",
   loginGuard,
@@ -62,12 +78,7 @@ router.post(
       
       await securityService.resetAttempts(requestIp, body.email);
       
-      res.cookie("refreshToken", result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days (matches env)
-      });
+      res.cookie("refreshToken", result.refreshToken, refreshCookieOptions());
       
       res.json({ token: result.token, user: result.user });
     } catch (err: any) {
@@ -105,12 +116,7 @@ router.post("/refresh", async (req: Request, res: Response, next: NextFunction) 
 
     const result = await authService.processRefreshToken(token);
 
-    res.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOptions());
 
     res.json({ token: result.token });
   } catch (err) {
@@ -137,7 +143,8 @@ router.post("/logout", async (req: Request, res: Response, next: NextFunction) =
     if (token) {
       await authService.logout(token);
     }
-    res.clearCookie("refreshToken");
+    // Clear with matching options so the browser actually removes the cookie
+    res.clearCookie("refreshToken", refreshCookieOptions());
     res.json({ message: "Logged out successfully" });
   } catch (err) {
     next(err);
