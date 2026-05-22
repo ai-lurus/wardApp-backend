@@ -17,7 +17,9 @@
     "lint": "eslint .",
     "test": "jest",
     "test:isolation": "jest tenant-isolation",
-    "test:routes-tollbooths": "jest routes-tollbooths"
+    "test:routes-tollbooths": "jest routes-tollbooths",
+    "test:inventory": "jest inventory-flow",
+    "db:test:reset": "DATABASE_URL=postgresql://postgres:password@localhost:5432/ward_test_db prisma migrate reset --force --skip-seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
