@@ -3,19 +3,21 @@ import app from "../../src/server";
 import { prisma } from "../../src/lib/prisma";
 import { createTestTenant, cleanupTestData } from "./helpers/setup";
 
+let tenant: Awaited<ReturnType<typeof createTestTenant>>;
+
+beforeAll(async () => {
+  await cleanupTestData();
+  tenant = await createTestTenant("rate");
+});
+
+afterAll(async () => {
+  await cleanupTestData();
+  await prisma.loginAttempt.deleteMany();
+  await prisma.securityLog.deleteMany();
+  await prisma.$disconnect();
+});
+
 describe("Rate Limiting & Security", () => {
-    let tenant: any;
-
-    beforeAll(async () => {
-        tenant = await createTestTenant("rate_limit_tenant");
-    });
-
-    afterAll(async () => {
-        await cleanupTestData();
-        await prisma.loginAttempt.deleteMany();
-        await prisma.securityLog.deleteMany();
-    });
-
     beforeEach(async () => {
         await prisma.loginAttempt.deleteMany();
         await prisma.securityLog.deleteMany();
@@ -100,7 +102,7 @@ describe("Rate Limiting & Security", () => {
             .post("/api/auth/login")
             .send({
                 email: tenant.user.email,
-                password: "password123" // Contraseña por defecto creada en createTestTenant
+                password: "TestPass123!" // Contraseña por defecto creada en createTestTenant
             });
             
         expect(res.status).toBe(200);
@@ -112,3 +114,4 @@ describe("Rate Limiting & Security", () => {
         expect(attempt).toBeNull();
     });
 });
+

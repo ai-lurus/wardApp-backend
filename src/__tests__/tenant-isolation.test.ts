@@ -14,6 +14,11 @@ let inventoryMovementB: any;
 beforeAll(async () => {
   await cleanupTestData();
 
+  // Ensure ward_app_user has necessary schema privileges (in case db reset dropped public schema)
+  await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON SCHEMA public TO ward_app_user;`);
+  await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ward_app_user;`);
+  await prisma.$executeRawUnsafe(`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ward_app_user;`);
+
   tenantA = await createTestTenant("A");
   tenantB = await createTestTenant("B");
 
@@ -39,7 +44,7 @@ beforeAll(async () => {
   unitB = await prisma.unit.create({
     data: {
       plate: "B-1234",
-      type: "camion",
+      type: "caja_seca",
       axles: 2,
       company_id: tenantB.company.id,
     },
@@ -49,7 +54,7 @@ beforeAll(async () => {
     data: {
       company_id: tenantB.company.id,
       material_id: materialB.id,
-      type: "entrada",
+      type: "entry",
       quantity: 10,
       created_by: tenantB.user.id,
     },
@@ -74,7 +79,7 @@ describe("Tenant Isolation", () => {
         .set("Authorization", `Bearer ${tenantA.token}`);
 
       expect(res.status).toBe(200);
-      const materials = res.body.data ? res.body.data : res.body; 
+      const materials = res.body.items || res.body.data || res.body;
       expect(Array.isArray(materials)).toBe(true);
       if (materials.length > 0) {
         expect(materials.every((m: any) => m.company_id !== tenantB.company.id)).toBe(true);
@@ -111,9 +116,10 @@ describe("Tenant Isolation", () => {
         .set("Authorization", `Bearer ${tenantA.token}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      if (res.body.length > 0) {
-        expect(res.body.every((u: any) => u.company_id !== tenantB.company.id)).toBe(true);
+      const units = res.body.items || res.body.data || res.body;
+      expect(Array.isArray(units)).toBe(true);
+      if (units.length > 0) {
+        expect(units.every((u: any) => u.company_id !== tenantB.company.id)).toBe(true);
       }
     });
 
@@ -147,10 +153,10 @@ describe("Tenant Isolation", () => {
         .set("Authorization", `Bearer ${tenantA.token}`);
 
       expect(res.status).toBe(200);
-      const movements = res.body.data ? res.body.data : res.body; 
+      const movements = res.body.items || res.body.data || res.body;
       expect(Array.isArray(movements)).toBe(true);
       if (movements.length > 0) {
-         expect(movements.every((m: any) => m.company_id !== tenantB.company.id)).toBe(true);
+        expect(movements.every((m: any) => m.company_id !== tenantB.company.id)).toBe(true);
       }
     });
 
@@ -176,13 +182,17 @@ describe("Tenant Isolation", () => {
 
   describe("withTenant Prisma Extension", () => {
     it("should return an empty array and not expose data for an invalid company_id", async () => {
-      const fakedUUID = "00000000-0000-0000-0000-000000000000";
-      const result = await withTenant(fakedUUID, async (tx) => {
-        return tx.material.findMany();
-      });
-
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(0);
+      const fakedUUID = "11111111-1111-1111-1111-111111111111";
+      await prisma.$executeRawUnsafe(`SET ROLE ward_app_user`);
+      try {
+        const result = await withTenant(fakedUUID, async (tx) => {
+          return tx.unit.findMany();
+        });
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBe(0);
+      } finally {
+        await prisma.$executeRawUnsafe(`RESET ROLE`);
+      }
     });
   });
 });

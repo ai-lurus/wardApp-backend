@@ -13,7 +13,10 @@ router.use(checkModuleAccess("operaciones"));
 const TollboothSchema = registry.register(
   "Tollbooth",
   z.object({
-    id: z.string().uuid().openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }),
+    id: z
+      .string()
+      .uuid()
+      .openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }),
     name: z.string().openapi({ example: "Caseta San Martín" }),
     cost_2_axles: z.number().openapi({ example: 150.5 }),
     cost_3_axles: z.number().openapi({ example: 200.0 }),
@@ -22,7 +25,7 @@ const TollboothSchema = registry.register(
     cost_6_axles: z.number().openapi({ example: 350.0 }),
     cost_7_plus_axles: z.number().openapi({ example: 400.0 }),
     active: z.boolean().openapi({ example: true }),
-  })
+  }),
 );
 
 const idParamSchema = z.object({
@@ -49,7 +52,10 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   request: {
     query: getTollboothsQuerySchema.extend({
-      search: z.string().optional().openapi({ description: "Búsqueda por nombre de caseta" }),
+      search: z
+        .string()
+        .optional()
+        .openapi({ description: "Búsqueda por nombre de caseta" }),
     }),
   },
   responses: {
@@ -74,7 +80,10 @@ const sanitizeResult = (obj: any): any => {
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = getTollboothsQuerySchema.parse(req.query);
-    const result = await tollboothService.getTollbooths(req.user!.companyId, query);
+    const result = await tollboothService.getTollbooths(
+      req.user!.companyId,
+      query,
+    );
     res.json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -108,7 +117,10 @@ registry.registerPath({
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const result = await tollboothService.getTollboothById(req.user!.companyId, id);
+    const result = await tollboothService.getTollboothById(
+      req.user!.companyId,
+      id,
+    );
     if (!result) {
       throw new AppError(404, "Caseta no encontrada");
     }
@@ -123,13 +135,42 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
 });
 
 const createTollboothSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
-  cost_2_axles: z.number().min(1, "El costo debe ser mayor a 0"),
-  cost_3_axles: z.number().min(1, "El costo debe ser mayor a 0"),
-  cost_4_axles: z.number().min(1, "El costo debe ser mayor a 0"),
-  cost_5_axles: z.number().min(1, "El costo debe ser mayor a 0"),
-  cost_6_axles: z.number().min(1, "El costo debe ser mayor a 0"),
-  cost_7_plus_axles: z.number().min(1, "El costo debe ser mayor a 0"),
+  name: z
+    .string({
+      error: "El nombre es requerido",
+    })
+    .trim()
+    .min(1, "El nombre es requerido"),
+  cost_2_axles: z
+    .number({
+      error: "El costo para 2 ejes es requerido",
+    })
+    .min(0.1, "El costo debe ser mayor a 0"),
+  cost_3_axles: z
+    .number({
+      error: "El costo para 3 ejes es requerido",
+    })
+    .min(0.1, "El costo debe ser mayor a 0"),
+  cost_4_axles: z
+    .number({
+      error: "El costo para 4 ejes es requerido",
+    })
+    .min(0.1, "El costo debe ser mayor a 0"),
+  cost_5_axles: z
+    .number({
+      error: "El costo para 5 ejes es requerido",
+    })
+    .min(0.1, "El costo debe ser mayor a 0"),
+  cost_6_axles: z
+    .number({
+      error: "El costo para 6 ejes es requerido",
+    })
+    .min(0.1, "El costo debe ser mayor a 0"),
+  cost_7_plus_axles: z
+    .number({
+      error: "El costo para 7 o mas ejes es requerido",
+    })
+    .min(0.1, "El costo debe ser mayor a 0"),
   active: z.boolean().optional(),
 });
 
@@ -159,7 +200,10 @@ registry.registerPath({
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = createTollboothSchema.parse(req.body);
-    const result = await tollboothService.createTollbooth(req.user!.companyId, body);
+    const result = await tollboothService.createTollbooth(
+      req.user!.companyId,
+      body,
+    );
     res.status(201).json(sanitizeResult(result));
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -200,7 +244,11 @@ router.put("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const body = updateTollboothSchema.parse(req.body);
-    const result = await tollboothService.updateTollbooth(req.user!.companyId, id, body);
+    const result = await tollboothService.updateTollbooth(
+      req.user!.companyId,
+      id,
+      body,
+    );
     if (!result) {
       throw new AppError(404, "Caseta no encontrada");
     }
@@ -233,21 +281,27 @@ registry.registerPath({
   },
 });
 
-router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = idParamSchema.parse(req.params);
-    const result = await tollboothService.deleteTollbooth(req.user!.companyId, id);
-    if (!result) {
-      throw new AppError(404, "Caseta no encontrada");
+router.delete(
+  "/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = idParamSchema.parse(req.params);
+      const result = await tollboothService.deleteTollbooth(
+        req.user!.companyId,
+        id,
+      );
+      if (!result) {
+        throw new AppError(404, "Caseta no encontrada");
+      }
+      res.json(sanitizeResult(result));
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
+      } else {
+        next(err);
+      }
     }
-    res.json(sanitizeResult(result));
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      next(new AppError(400, err.issues.map((e) => e.message).join(", ")));
-    } else {
-      next(err);
-    }
-  }
-});
+  },
+);
 
 export { router as tollboothRoutes };

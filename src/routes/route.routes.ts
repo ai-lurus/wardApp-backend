@@ -207,11 +207,21 @@ const routeTollboothInputSchema = registry.register(
 );
 
 const createRouteSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido").openapi({ example: "Ruta 15D - CDMX a Puebla" }),
-  origin: z.string().min(1, "El origen es requerido").openapi({ example: "Ciudad de México" }),
-  destination: z.string().min(1, "El destino es requerido").openapi({ example: "Puebla" }),
-  distance_km: z.number().min(1, "La distancia debe ser mayor a 0").openapi({ example: 130.5 }),
-  estimated_duration_min: z.number().int().min(1, "La duración debe ser mayor a 0").openapi({ example: 120 }),
+  name: z.string({
+    error: "El nombre es requerido"
+  }).min(1, "El nombre es requerido").openapi({ example: "Ruta 15D - CDMX a Puebla" }),
+  origin: z.string({
+    error: "El origen es requerido"
+  }).min(1, "El origen es requerido").openapi({ example: "Ciudad de México" }),
+  destination: z.string({
+    error: "El destino es requerido"
+  }).min(1, "El destino es requerido").openapi({ example: "Puebla" }),
+  distance_km: z.number({
+    error: "La distancia debe ser mayor a 0"
+  }).min(0.1, "La distancia debe ser mayor a 0").openapi({ example: 130.5 }),
+  estimated_duration_min: z.number({
+    error: "La duración debe ser mayor a 0"
+  }).int().min(0.1, "La duración debe ser mayor a 0").openapi({ example: 120 }),
   active: z.boolean().optional().openapi({ example: true }),
   tollbooths: z.array(routeTollboothInputSchema).default([]),
 });

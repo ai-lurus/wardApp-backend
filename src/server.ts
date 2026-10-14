@@ -16,9 +16,11 @@ import { billingRoutes } from "./routes/billing.routes";
 import { uploadRoutes } from "./routes/upload.routes";
 import { unitRoutes } from "./routes/unit.routes";
 import { wardenRoutes } from "./routes/warden.routes";
+import { operatorRoutes } from "./routes/operator.routes";
 import { tollboothRoutes } from "./routes/tollbooth.routes";
 import { routeRoutes } from "./routes/route.routes";
-
+import { tripRoutes } from "./routes/trip.routes";
+import { settingsRoutes } from "./routes/settings.routes";
 console.log("ENV CHECK:", {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
   NODE_ENV: process.env.NODE_ENV,
@@ -66,14 +68,17 @@ app.use("/api/billing", billingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/units", unitRoutes);
 app.use("/api/warden", wardenRoutes);
+app.use("/api/operators", operatorRoutes);
 app.use("/api/tollbooths", tollboothRoutes);
 app.use("/api/routes", routeRoutes);
+app.use("/api/trips", tripRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Error handler
 app.use(errorHandler);
 
 // In local dev, start the server. In Vercel, export the app instead.
-if (process.env.VERCEL !== "1") {
+if (process.env.VERCEL !== "1" && process.env.NODE_ENV !== "test") {
   app.listen(env.PORT, () => {
     console.log(`Server running on http://localhost:${env.PORT}`);
   });
