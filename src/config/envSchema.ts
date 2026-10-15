@@ -22,6 +22,10 @@ export const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   
+  // Warden (Anthropic)
+  ANTHROPIC_API_KEY: z.string().optional(),
+  WARDEN_MODEL: z.string().default("claude-sonnet-5-5"),
+
   // Google Cloud Storage
   GCS_PROJECT_ID: z.string().optional(),
   GCS_CLIENT_EMAIL: z.string().optional(),
