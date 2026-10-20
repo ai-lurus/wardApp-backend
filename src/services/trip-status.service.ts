@@ -10,6 +10,7 @@ export interface TransitionPayload {
   tollbooth_cost?: number;
   fuel_cost?: number;
   extras_cost?: number;
+  entry_cost?: number;
 }
 
 /**
@@ -75,6 +76,9 @@ export async function transitionTripStatus(
         ? new Date(payload.arrival_time)
         : new Date();
       updateData.actual_cost = payload.actual_cost;
+      if (payload.entry_cost !== undefined) {
+        updateData.entry_cost = payload.entry_cost;
+      }
 
       // Update cost detail breakdown if provided
       if (
@@ -151,6 +155,7 @@ export async function transitionTripStatus(
         route: true,
         unit: true,
         operator: true,
+        customer: true,
         history: {
           orderBy: { created_at: "desc" },
           take: 10,

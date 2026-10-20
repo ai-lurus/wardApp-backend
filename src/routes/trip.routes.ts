@@ -46,6 +46,7 @@ const TripSchema = registry.register(
     route_id: z.string().uuid(),
     unit_id: z.string().uuid(),
     operator_id: z.string().uuid(),
+    customer_id: z.string().uuid().nullable(),
     status: tripStatusEnum,
     scheduled_date: z.date(),
     departure_time: z.date().nullable(),
@@ -66,6 +67,7 @@ const createTripSchema = z.object({
   route_id: z.string().uuid("El ID de la ruta no es un UUID válido"),
   unit_id: z.string().uuid("El ID de la unidad no es un UUID válido"),
   operator_id: z.string().uuid("El ID del operador no es un UUID válido"),
+  customer_id: z.string().uuid("El ID del cliente no es un UUID válido").optional(),
   scheduled_date: z.string().datetime("La fecha programada debe ser una fecha válida ISO"),
   notes: z.string().optional(),
   entry_cost: z.number().optional(),
@@ -96,11 +98,16 @@ const completeTripSchema = z.object({
   entry_cost: z.number()
 });
 
+const assignCustomerSchema = z.object({
+  customer_id: z.string().uuid("El ID del cliente no es un UUID válido").nullable(),
+});
+
 const getTripsQuerySchema = z.object({
   status: tripStatusEnum.optional(),
   route_id: z.string().uuid().optional(),
   operator_id: z.string().uuid().optional(),
   unit_id: z.string().uuid().optional(),
+  customer_id: z.string().uuid().optional(),
   from_date: z.string().datetime().optional(),
   to_date: z.string().datetime().optional(),
 });
@@ -266,7 +273,7 @@ router.patch("/:id/status", async (req: Request, res: Response, next: NextFuncti
       req.user!.companyId,
       id,
       body.status,
-      req.user!.id,
+      req.user!.userId,
       body
     );
     res.json(trip);
@@ -318,14 +325,61 @@ router.patch("/:id/completed", async (req: Request, res: Response, next: NextFun
       req.user!.companyId,
       id,
       TripStatus.completado,
-      req.user!.id,
+      req.user!.userId,
       {
         actual_cost: body.actual_tollbooth_cost + body.actual_fuel_cost + body.actual_extras_cost,
         tollbooth_cost: body.actual_tollbooth_cost,
         fuel_cost: body.actual_fuel_cost,
         extras_cost: body.actual_extras_cost,
+        entry_cost: body.entry_cost,
       }
     );
+    res.json(trip);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      const message = err.issues.map((e: any) => e.message).join(", ");
+      next(new AppError(400, message));
+    } else {
+      next(err);
+    }
+  }
+});
+
+registry.registerPath({
+  method: "patch",
+  path: "/trips/{id}/customer",
+  summary: "Asignar o quitar el cliente de un viaje",
+  tags: ["Trips"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    params: idParamSchema,
+    body: {
+      content: {
+        "application/json": {
+          schema: assignCustomerSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Cliente asignado con éxito",
+      content: {
+        "application/json": {
+          schema: TripSchema,
+        },
+      },
+    },
+    404: { description: "Viaje o cliente no encontrado" },
+  },
+});
+
+// PATCH /api/trips/:id/customer
+router.patch("/:id/customer", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const body = assignCustomerSchema.parse(req.body);
+    const trip = await tripService.assignTripCustomer(req.user!.companyId, id, body.customer_id);
     res.json(trip);
   } catch (err) {
     if (err instanceof z.ZodError) {
