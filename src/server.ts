@@ -21,11 +21,13 @@ import { tollboothRoutes } from "./routes/tollbooth.routes";
 import { routeRoutes } from "./routes/route.routes";
 import { tripRoutes } from "./routes/trip.routes";
 import { settingsRoutes } from "./routes/settings.routes";
+import { customerRoutes } from "./routes/customer.routes";
 console.log("ENV CHECK:", {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
   NODE_ENV: process.env.NODE_ENV,
   VERCEL: process.env.VERCEL
 });
+
 
 const app = express();
 
@@ -73,6 +75,7 @@ app.use("/api/tollbooths", tollboothRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/customers", customerRoutes);
 
 // Error handler
 app.use(errorHandler);

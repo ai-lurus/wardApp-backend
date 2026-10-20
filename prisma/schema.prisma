@@ -35,6 +35,7 @@ model Company {
   routes     Route[]
   tollbooths Tollbooth[]
   trips      Trip[]
+  customers  Customer[]
 
   conversations           Conversation[]
   messages                Message[]
@@ -47,7 +48,7 @@ model Company {
   subscription_status    String?
   active_modules         AppModule[] @default([inventario])
 
-  tenant_settings        TenantSettings?
+  tenant_settings TenantSettings?
 
   @@map("companies")
 }
@@ -459,7 +460,7 @@ model LoginAttempt {
 
 model SecurityLog {
   id         String   @id @default(uuid()) @db.Uuid
-  event_type String   // e.g., "BRUTE_FORCE_LOCK", "SUSPICIOUS_ACTIVITY"
+  event_type String // e.g., "BRUTE_FORCE_LOCK", "SUSPICIOUS_ACTIVITY"
   ip         String
   email      String?
   details    String?  @db.Text
@@ -484,9 +485,9 @@ model Route {
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
 
-  company                Company          @relation(fields: [company_id], references: [id])
-  route_tollbooths       RouteTollbooth[]
-  trips                  Trip[]
+  company          Company          @relation(fields: [company_id], references: [id])
+  route_tollbooths RouteTollbooth[]
+  trips            Trip[]
 
   @@map("routes")
 }
@@ -505,8 +506,8 @@ model Tollbooth {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
-  company           Company          @relation(fields: [company_id], references: [id])
-  route_tollbooths  RouteTollbooth[]
+  company          Company          @relation(fields: [company_id], references: [id])
+  route_tollbooths RouteTollbooth[]
 
   @@map("tollbooths")
 }
@@ -519,53 +520,56 @@ model RouteTollbooth {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
-  route        Route     @relation(fields: [route_id], references: [id], onDelete: Cascade)
-  tollbooth    Tollbooth @relation(fields: [tollbooth_id], references: [id], onDelete: Cascade)
+  route     Route     @relation(fields: [route_id], references: [id], onDelete: Cascade)
+  tollbooth Tollbooth @relation(fields: [tollbooth_id], references: [id], onDelete: Cascade)
 
   @@unique([route_id, tollbooth_id])
   @@map("route_tollbooths")
 }
 
 model Trip {
-  id             String     @id @default(uuid()) @db.Uuid
-  company_id     String     @db.Uuid
-  route_id       String     @db.Uuid
-  unit_id        String     @db.Uuid
-  operator_id    String     @db.Uuid
-  status         TripStatus @default(programado)
-  scheduled_date DateTime
-  departure_time DateTime?
-  arrival_time   DateTime?
-  estimated_cost Float?
-  actual_cost    Float?
-  notes          String?
-  entry_cost     Float?
+  id                  String     @id @default(uuid()) @db.Uuid
+  company_id          String     @db.Uuid
+  route_id            String     @db.Uuid
+  unit_id             String     @db.Uuid
+  operator_id         String     @db.Uuid
+  customer_id         String?    @db.Uuid
+  status              TripStatus @default(programado)
+  scheduled_date      DateTime
+  departure_time      DateTime?
+  arrival_time        DateTime?
+  estimated_cost      Float?
+  actual_cost         Float?
+  notes               String?
+  entry_cost          Float?
   cancellation_reason String?
-  created_at     DateTime   @default(now())
-  updated_at     DateTime   @updatedAt
+  created_at          DateTime   @default(now())
+  updated_at          DateTime   @updatedAt
 
-  company        Company    @relation(fields: [company_id], references: [id])
-  route          Route      @relation(fields: [route_id], references: [id])
-  unit           Unit       @relation(fields: [unit_id], references: [id])
-  operator       Operator   @relation(fields: [operator_id], references: [id])
-  cost_detail    TripCostDetail?
-  history        TripStatusHistory[]
+  company     Company             @relation(fields: [company_id], references: [id])
+  route       Route               @relation(fields: [route_id], references: [id])
+  unit        Unit                @relation(fields: [unit_id], references: [id])
+  operator    Operator            @relation(fields: [operator_id], references: [id])
+  customer    Customer?           @relation(fields: [customer_id], references: [id], onDelete: SetNull)
+  cost_detail TripCostDetail?
+  history     TripStatusHistory[]
 
+  @@index([company_id, customer_id])
   @@map("trips")
 }
 
 model TripCostDetail {
-  id                       String   @id @default(uuid()) @db.Uuid
-  trip_id                  String   @unique @db.Uuid
-  tollbooth_cost           Float    @default(0)
-  fuel_cost                Float    @default(0)
+  id                       String  @id @default(uuid()) @db.Uuid
+  trip_id                  String  @unique @db.Uuid
+  tollbooth_cost           Float   @default(0)
+  fuel_cost                Float   @default(0)
   fuel_type                String?
-  extras_cost              Float    @default(0)
-  estimated_tollbooth_cost Float    @default(0)
-  estimated_fuel_cost      Float    @default(0)
-  estimated_extras_cost    Float    @default(0)
+  extras_cost              Float   @default(0)
+  estimated_tollbooth_cost Float   @default(0)
+  estimated_fuel_cost      Float   @default(0)
+  estimated_extras_cost    Float   @default(0)
 
-  trip                     Trip     @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+  trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
 
   @@map("trip_cost_details")
 }
@@ -581,4 +585,26 @@ model TripStatusHistory {
   trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
 
   @@map("trip_status_history")
+}
+
+// ============================================================================
+// Clientes
+// ============================================================================
+
+model Customer {
+  id         String    @id @default(uuid()) @db.Uuid
+  company_id String    @db.Uuid
+  name       String
+  phone      String
+  email      String?
+  notes      String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  company Company @relation(fields: [company_id], references: [id])
+  trips   Trip[]
+
+  @@index([company_id, name])
+  @@map("customers")
 }

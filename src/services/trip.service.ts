@@ -1,12 +1,14 @@
 import { withTenant } from "../lib/prisma";
 import { Prisma, TripStatus, UnitStatus, OperatorStatus } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
+import { assertCustomerAvailable } from "./customer.service";
 
 export interface TripFilters {
   status?: TripStatus;
   route_id?: string;
   operator_id?: string;
   unit_id?: string;
+  customer_id?: string;
   from_date?: string;
   to_date?: string;
 }
@@ -15,6 +17,7 @@ export interface CreateTripDto {
   route_id: string;
   unit_id: string;
   operator_id: string;
+  customer_id?: string;
   scheduled_date: string;
   notes?: string;
   entry_cost?: number;
@@ -53,6 +56,11 @@ export async function createTrip(companyId: string, data: CreateTripDto) {
     });
     if (!route) throw new AppError(404, "Ruta no encontrada");
 
+    // 4. Verify Customer (optional)
+    if (data.customer_id) {
+      await assertCustomerAvailable(tx, companyId, data.customer_id);
+    }
+
     const estimated_tollbooth_cost = data.estimated_tollbooth_cost || 0;
     const estimated_fuel_cost = data.estimated_fuel_cost || 0;
     const estimated_extras_cost = data.estimated_extras_cost || 0;
@@ -82,6 +90,7 @@ export async function createTrip(companyId: string, data: CreateTripDto) {
         route_id: data.route_id,
         unit_id: data.unit_id,
         operator_id: data.operator_id,
+        customer_id: data.customer_id,
         scheduled_date: new Date(data.scheduled_date),
         notes: data.notes,
         entry_cost: data.entry_cost,
@@ -105,6 +114,7 @@ export async function createTrip(companyId: string, data: CreateTripDto) {
         route: true,
         unit: true,
         operator: true,
+        customer: true,
       }
     });
   });
@@ -120,6 +130,7 @@ export async function getTrips(companyId: string, filters: TripFilters) {
     if (filters.route_id) where.route_id = filters.route_id;
     if (filters.operator_id) where.operator_id = filters.operator_id;
     if (filters.unit_id) where.unit_id = filters.unit_id;
+    if (filters.customer_id) where.customer_id = filters.customer_id;
 
     if (filters.from_date || filters.to_date) {
       where.scheduled_date = {};
@@ -133,6 +144,7 @@ export async function getTrips(companyId: string, filters: TripFilters) {
         route: true,
         unit: true,
         operator: true,
+        customer: true,
         cost_detail: true,
       },
       orderBy: { scheduled_date: "desc" },
@@ -148,12 +160,39 @@ export async function getTripById(companyId: string, id: string) {
         route: true,
         unit: true,
         operator: true,
+        customer: true,
         cost_detail: true,
       },
     });
 
     if (!trip) throw new AppError(404, "Viaje no encontrado");
     return trip;
+  });
+}
+
+export async function assignTripCustomer(companyId: string, tripId: string, customerId: string | null) {
+  return withTenant(companyId, async (tx) => {
+    const trip = await tx.trip.findFirst({
+      where: { id: tripId, company_id: companyId },
+      select: { id: true },
+    });
+    if (!trip) throw new AppError(404, "Viaje no encontrado");
+
+    if (customerId) {
+      await assertCustomerAvailable(tx, companyId, customerId);
+    }
+
+    return tx.trip.update({
+      where: { id: tripId },
+      data: { customer_id: customerId },
+      include: {
+        route: true,
+        unit: true,
+        operator: true,
+        customer: true,
+        cost_detail: true,
+      },
+    });
   });
 }
 
@@ -206,6 +245,7 @@ export async function updateTripStatus(companyId: string, tripId: string, data: 
         route: true,
         unit: true,
         operator: true,
+        customer: true,
       }
     });
   });
@@ -265,6 +305,7 @@ export async function completeTrip(companyId: string, tripId: string, data: Comp
         cost_detail: true,
         unit: true,
         operator: true,
+        customer: true,
       }
     });
   });

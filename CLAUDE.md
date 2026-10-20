@@ -227,6 +227,14 @@ GET    /api/inventory/alerts
 
 GET    /api/dashboard/stats
 
+GET    /api/customers              → ?search (incluye stats de viajes por cliente)
+GET    /api/customers/report       → ?from_date, to_date (frecuencia, ingresos, utilidad)
+GET    /api/customers/:id          → cliente + stats + viajes
+POST   /api/customers              → admin only
+PUT    /api/customers/:id          → admin only
+DELETE /api/customers/:id          → admin only (borrado lógico)
+PATCH  /api/trips/:id/customer     → { customer_id: uuid | null }
+
 GET    /api/admin/companies        → super_admin only
 POST   /api/admin/companies
 PATCH  /api/admin/companies/:id

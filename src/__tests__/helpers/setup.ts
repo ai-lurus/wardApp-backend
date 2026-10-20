@@ -110,6 +110,10 @@ export async function cleanupTestData() {
     where: { company_id: { in: companyIds } }
   });
 
+  await prisma.customer.deleteMany({
+    where: { company_id: { in: companyIds } }
+  });
+
   await prisma.operator.deleteMany({
     where: { company_id: { in: companyIds } }
   });
