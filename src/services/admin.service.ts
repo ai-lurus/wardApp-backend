@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { AppModule } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
 import { prisma } from "../lib/prisma";
 import { sendWelcomeEmail } from "./email.service";
@@ -48,6 +49,7 @@ export async function getCompany(id: string) {
 export async function createCompany(data: {
   name: string;
   slug: string;
+  active_modules: AppModule[];
   adminEmail: string;
   adminName: string;
   adminPassword: string;
@@ -62,7 +64,11 @@ export async function createCompany(data: {
 
   const result = await prisma.$transaction(async (tx) => {
     const company = await tx.company.create({
-      data: { name: data.name, slug: data.slug },
+      data: { 
+        name: data.name, 
+        slug: data.slug,
+        active_modules: data.active_modules as import("@prisma/client").AppModule[] 
+      },
       select: COMPANY_SELECT,
     });
 
@@ -95,7 +101,7 @@ export async function createCompany(data: {
 
 export async function updateCompany(
   id: string,
-  data: { name?: string; slug?: string; active?: boolean; active_modules?: string[] }
+  data: { name?: string; slug?: string; active?: boolean; active_modules?: AppModule[] }
 ) {
   const company = await prisma.company.findUnique({ where: { id } });
   if (!company) throw new AppError(404, "Company not found");
@@ -105,7 +111,7 @@ export async function updateCompany(
     if (existing) throw new AppError(409, "Slug already in use");
   }
 
-  return prisma.company.update({ where: { id }, data, select: COMPANY_SELECT });
+  return prisma.company.update({ where: { id }, data: { ...data, active_modules: data.active_modules as import("@prisma/client").AppModule[] | undefined }, select: COMPANY_SELECT });
 }
 
 // ─── Users within a company ──────────────────────────────

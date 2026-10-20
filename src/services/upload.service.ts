@@ -60,6 +60,35 @@ export class UploadService {
         });
     }
 
+    static async uploadDocument(file: Express.Multer.File, folder: string = "documents"): Promise<string> {
+        if (!this.storage || !this.bucketName) {
+            throw new Error("Google Cloud Storage is not configured");
+        }
+
+        const bucket = this.storage.bucket(this.bucketName);
+        const uniqueFilename = `${folder}/${Date.now()}-${file.originalname}`;
+        const fileUpload = bucket.file(uniqueFilename);
+
+        const stream = fileUpload.createWriteStream({
+            metadata: {
+                contentType: file.mimetype,
+            },
+        });
+
+        return new Promise((resolve, reject) => {
+            stream.on("error", (error) => {
+                console.error("Error uploading document to GCS:", error);
+                reject(error);
+            });
+
+            stream.on("finish", async () => {
+                resolve(uniqueFilename);
+            });
+
+            stream.end(file.buffer);
+        });
+    }
+
     static async getSignedUrl(filename: string, expiresInMinutes: number = 60): Promise<string> {
         if (!this.storage || !this.bucketName) {
             throw new Error("Google Cloud Storage is not configured");

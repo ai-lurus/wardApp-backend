@@ -1,0 +1,78 @@
+[
+  {
+    "column_name": "active",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "company_id",
+    "data_type": "uuid"
+  },
+  {
+    "column_name": "active",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "created_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "updated_at",
+    "data_type": "timestamp without time zone"
+  },
+  {
+    "column_name": "slug",
+    "data_type": "text"
+  },
+  {
+    "column_name": "active_modules",
+    "data_type": "ARRAY"
+  },
+  {
+    "column_name": "stripe_customer_id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "stripe_subscription_id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "subscription_status",
+    "data_type": "text"
+  },
+  {
+    "column_name": "email",
+    "data_type": "text"
+  },
+  {
+    "column_name": "password_hash",
+    "data_type": "text"
+  },
+  {
+    "column_name": "name",
+    "data_type": "text"
+  },
+  {
+    "column_name": "role",
+    "data_type": "text"
+  },
+  {
+    "column_name": "id",
+    "data_type": "text"
+  },
+  {
+    "column_name": "name",
+    "data_type": "text"
+  }
+]

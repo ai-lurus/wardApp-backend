@@ -1,6 +1,6 @@
 import { MovementType } from "@prisma/client";
 import { AppError } from "../middleware/errorHandler";
-import { prisma } from "../lib/prisma";
+import { prisma, withTenant } from "../lib/prisma";
 
 interface EntryData {
   companyId: string;
@@ -14,8 +14,7 @@ interface EntryData {
 }
 
 export async function registerEntry(data: EntryData) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${data.companyId}, true)`;
+  return withTenant(data.companyId, async (tx) => {
 
     const material = await tx.material.findFirst({
       where: { id: data.material_id, company_id: data.companyId },
@@ -61,8 +60,7 @@ interface ExitData {
 }
 
 export async function registerExit(data: ExitData) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${data.companyId}, true)`;
+  return withTenant(data.companyId, async (tx) => {
 
     const material = await tx.material.findFirst({
       where: { id: data.material_id, company_id: data.companyId },
@@ -114,8 +112,7 @@ export async function listMovements(params: ListMovementsParams) {
   if (type) where.type = type;
   if (material_id) where.material_id = material_id;
 
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const [items, count] = await Promise.all([
       tx.inventoryMovement.findMany({
         where,
@@ -134,8 +131,7 @@ export async function listMovements(params: ListMovementsParams) {
 }
 
 export async function getStock(companyId: string, lowStockOnly?: boolean) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const materials = await tx.material.findMany({
       where: { company_id: companyId, active: true },
       include: { category: { select: { name: true } } },
@@ -147,8 +143,7 @@ export async function getStock(companyId: string, lowStockOnly?: boolean) {
 }
 
 export async function getAlerts(companyId: string) {
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
     const materials = await tx.material.findMany({
       where: { company_id: companyId, active: true },
       include: { category: { select: { name: true } } },

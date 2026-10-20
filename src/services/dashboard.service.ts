@@ -1,11 +1,10 @@
-import { prisma } from "../lib/prisma";
+import { prisma, withTenant } from "../lib/prisma";
 
 export async function getDashboardStats(companyId: string) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.current_company_id', ${companyId}, true)`;
+  return withTenant(companyId, async (tx) => {
 
     const [totalMaterials, materials, recentMovementsCount] = await Promise.all([
       tx.material.count({ where: { company_id: companyId, active: true } }),

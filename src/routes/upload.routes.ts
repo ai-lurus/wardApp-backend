@@ -2,6 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import { UploadService } from "../services/upload.service";
 import { authMiddleware } from "../middleware/auth";
+import { registry } from "../lib/openapi";
+import { z } from "zod";
 
 const router = Router();
 
@@ -14,6 +16,31 @@ const upload = multer({
     },
 });
 
+registry.registerPath({
+  method: "post",
+  path: "/upload",
+  summary: "Subir un archivo al almacenamiento (Cloud Storage)",
+  tags: ["Upload"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "multipart/form-data": {
+          schema: z.object({
+            file: z.any().openapi({ type: "string", format: "binary" }),
+            folder: z.string().optional().openapi({ example: "materials" }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Archivo subido exitosamente",
+      content: { "application/json": { schema: z.object({ url: z.string() }) } },
+    },
+  },
+});
 router.post("/", authMiddleware, upload.single("file"), async (req, res, next) => {
     try {
         if (!req.file) {
@@ -30,6 +57,24 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res, next) =
     }
 });
 
+registry.registerPath({
+  method: "get",
+  path: "/upload/url",
+  summary: "Obtener URL firmada para un archivo",
+  tags: ["Upload"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: z.object({
+      path: z.string().openapi({ description: "Ruta del archivo en el bucket" }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "URL firmada temporal",
+      content: { "application/json": { schema: z.object({ url: z.string() }) } },
+    },
+  },
+});
 router.get("/url", authMiddleware, async (req, res, next) => {
     try {
         const path = req.query.path as string;

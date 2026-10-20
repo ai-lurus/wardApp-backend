@@ -7,8 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AppModule {
+  inventario
+  operaciones
+  flotas
+  clientes
+  finanzas
+  admin
+  warden
+}
+
 model Company {
-  id         String   @id @default(uuid())
+  id         String   @id @default(uuid()) @db.Uuid
   name       String
   slug       String   @unique
   active     Boolean  @default(true)
@@ -20,18 +30,46 @@ model Company {
   materials  Material[]
   movements  InventoryMovement[]
   warehouses WarehouseConfig[]
+  units      Unit[]
+  operators  Operator[]
+  routes     Route[]
+  tollbooths Tollbooth[]
+  trips      Trip[]
+
+  conversations           Conversation[]
+  messages                Message[]
+  message_cards           MessageCard[]
+  warden_tool_invocations WardenToolInvocation[]
+  warden_audit            WardenAudit[]
 
   stripe_customer_id     String?
   stripe_subscription_id String?
   subscription_status    String?
-  active_modules         String[] @default(["inventario"])
+  active_modules         AppModule[] @default([inventario])
+
+  tenant_settings        TenantSettings?
 
   @@map("companies")
 }
 
+model TenantSettings {
+  id                        String   @id @default(uuid()) @db.Uuid
+  company_id                String   @unique @db.Uuid
+  fuel_price_per_liter      Float    @default(22.0)
+  fuel_efficiency_km_l      Float    @default(4.0)
+  estimated_trips_per_month Int      @default(20)
+  monthly_insurance_cost    Float    @default(0.0)
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
 model User {
-  id            String   @id @default(uuid())
-  company_id    String
+  id            String   @id @default(uuid()) @db.Uuid
+  company_id    String   @db.Uuid
   email         String   @unique
   password_hash String
   name          String
@@ -40,16 +78,20 @@ model User {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  company       Company              @relation(fields: [company_id], references: [id])
-  movements     InventoryMovement[]  @relation("CreatedByUser")
-  reset_tokens  PasswordResetToken[]
+  company        Company              @relation(fields: [company_id], references: [id])
+  movements      InventoryMovement[]  @relation("CreatedByUser")
+  reset_tokens   PasswordResetToken[]
+  refresh_tokens RefreshToken[]
+
+  conversations Conversation[]
+  warden_audit  WardenAudit[]
 
   @@map("users")
 }
 
 model PasswordResetToken {
-  id         String   @id @default(uuid())
-  user_id    String
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
   token      String   @unique
   expires_at DateTime
   used       Boolean  @default(false)
@@ -61,8 +103,8 @@ model PasswordResetToken {
 }
 
 model MaterialCategory {
-  id          String   @id @default(uuid())
-  company_id  String
+  id          String   @id @default(uuid()) @db.Uuid
+  company_id  String   @db.Uuid
   name        String
   description String?
   created_at  DateTime @default(now())
@@ -76,13 +118,13 @@ model MaterialCategory {
 }
 
 model Material {
-  id              String   @id @default(uuid())
-  company_id      String
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
   name            String
   sku             String?
   location        String?
-  category_id     String
-  zone_id         String?
+  category_id     String   @db.Uuid
+  zone_id         String?  @db.Uuid
   unit            String   @default("pieza")
   reference_price Float?
   min_stock       Int      @default(0)
@@ -102,11 +144,11 @@ model Material {
 }
 
 model WarehouseConfig {
-  id         String          @id @default(uuid())
-  company_id String
-  width_m    Float           @default(50)
-  height_m   Float           @default(30)
-  updated_at DateTime        @updatedAt
+  id         String   @id @default(uuid()) @db.Uuid
+  company_id String   @db.Uuid
+  width_m    Float    @default(50)
+  height_m   Float    @default(30)
+  updated_at DateTime @updatedAt
 
   company Company         @relation(fields: [company_id], references: [id])
   zones   WarehouseZone[]
@@ -115,7 +157,7 @@ model WarehouseConfig {
 }
 
 model WarehouseZone {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
   description String?
   x_pct       Float
@@ -123,7 +165,7 @@ model WarehouseZone {
   w_pct       Float
   h_pct       Float
   color       String   @default("#4CAF50")
-  config_id   String
+  config_id   String   @db.Uuid
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -139,9 +181,9 @@ enum MovementType {
 }
 
 model InventoryMovement {
-  id             String       @id @default(uuid())
-  company_id     String
-  material_id    String
+  id             String       @id @default(uuid()) @db.Uuid
+  company_id     String       @db.Uuid
+  material_id    String       @db.Uuid
   type           MovementType
   quantity       Int
   unit_cost      Float?
@@ -151,7 +193,7 @@ model InventoryMovement {
   destination    String?
   reason         String?
   notes          String?
-  created_by     String
+  created_by     String       @db.Uuid
   movement_date  DateTime     @default(now())
   created_at     DateTime     @default(now())
 
@@ -160,4 +202,383 @@ model InventoryMovement {
   user     User     @relation("CreatedByUser", fields: [created_by], references: [id])
 
   @@map("inventory_movements")
+}
+
+// Enums para Módulo de Flotas
+enum UnitType {
+  caja_seca
+  refrigerado
+  plataforma
+  volteo
+  pipa
+  otro
+}
+
+enum UnitStatus {
+  disponible
+  en_viaje
+  mantenimiento
+  inactivo
+}
+
+enum OperatorStatus {
+  disponible
+  en_viaje
+  no_disponible
+  inactivo
+}
+
+enum TripStatus {
+  programado
+  en_curso
+  completado
+  cancelado
+}
+
+enum OperatorDocumentType {
+  ine
+  contract
+  license
+}
+
+enum OperatorLicenseType {
+  A
+  B
+  C
+  D
+  E
+}
+
+model Operator {
+  id             String              @id @default(uuid()) @db.Uuid
+  company_id     String              @db.Uuid
+  name           String
+  license_number String
+  license_type   OperatorLicenseType
+  license_expiry DateTime
+  status         OperatorStatus      @default(disponible)
+  phone          String?
+  email          String?
+  created_at     DateTime            @default(now())
+  created_by     String?             @db.Uuid
+  updated_at     DateTime            @updatedAt
+  updated_by     String?             @db.Uuid
+  deleted_at     DateTime?
+
+  company   Company            @relation(fields: [company_id], references: [id])
+  documents OperatorDocument[]
+  trips     Trip[]
+
+  @@unique([company_id, license_number])
+  @@map("operators")
+}
+
+model OperatorDocument {
+  id            String               @id @default(uuid()) @db.Uuid
+  operator_id   String               @db.Uuid
+  document_type OperatorDocumentType
+  file_url      String
+  expiry_date   DateTime?
+  created_at    DateTime             @default(now())
+  created_by    String?              @db.Uuid
+  deleted_at    DateTime?
+
+  operator Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  @@map("operator_documents")
+}
+
+// Modelo de Unidades
+model Unit {
+  id                    String     @id @default(uuid()) @db.Uuid
+  company_id            String     @db.Uuid
+  plate                 String
+  brand                 String?
+  model                 String?
+  year                  Int?
+  type                  UnitType
+  axles                 Int
+  status                UnitStatus @default(disponible)
+  vin                   String?
+  insurance_expiry      DateTime?
+  fuel_efficiency_km_l  Decimal?   @db.Decimal(10, 2)
+  last_maintenance_date DateTime?
+  notes                 String?
+  created_at            DateTime   @default(now())
+  updated_at            DateTime   @updatedAt
+
+  company Company @relation(fields: [company_id], references: [id])
+  trips   Trip[]
+
+  @@unique([company_id, plate])
+  @@unique([company_id, vin])
+  @@map("units")
+}
+
+// ============================================================================
+// Warden (feature 001-warden-foundations)
+// All tables tenant-scoped + RLS enforced. See migration 20260412000000.
+// ============================================================================
+
+model Conversation {
+  id         String    @id @default(uuid()) @db.Uuid
+  company_id String    @db.Uuid
+  user_id    String    @db.Uuid
+  title      String    @default("Nueva conversación")
+  preview    String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  company          Company                @relation(fields: [company_id], references: [id])
+  user             User                   @relation(fields: [user_id], references: [id])
+  messages         Message[]
+  tool_invocations WardenToolInvocation[]
+  audit            WardenAudit[]
+
+  @@index([company_id, user_id, updated_at(sort: Desc)])
+  @@index([company_id, updated_at(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
+  conversation_id String   @db.Uuid
+  role            String
+  content         String
+  module_hint     String?
+  status          String   @default("complete")
+  error_code      String?
+  created_at      DateTime @default(now())
+
+  company          Company                @relation(fields: [company_id], references: [id])
+  conversation     Conversation           @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  cards            MessageCard[]
+  tool_invocations WardenToolInvocation[]
+  audit            WardenAudit[]
+
+  @@index([conversation_id, created_at])
+  @@index([company_id, created_at(sort: Desc)])
+  @@map("messages")
+}
+
+model MessageCard {
+  id         String   @id @default(uuid()) @db.Uuid
+  company_id String   @db.Uuid
+  message_id String   @db.Uuid
+  card_type  String
+  payload    Json
+  position   Int      @default(0)
+  created_at DateTime @default(now())
+
+  company Company @relation(fields: [company_id], references: [id])
+  message Message @relation(fields: [message_id], references: [id], onDelete: Cascade)
+
+  @@index([message_id, position])
+  @@index([company_id, card_type])
+  @@map("message_cards")
+}
+
+model WardenToolInvocation {
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
+  conversation_id String   @db.Uuid
+  message_id      String?  @db.Uuid
+  tool_name       String
+  module          String
+  input_json      Json
+  output_json     Json?
+  ok              Boolean
+  error_code      String?
+  latency_ms      Int
+  created_at      DateTime @default(now())
+
+  company      Company      @relation(fields: [company_id], references: [id])
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  message      Message?     @relation(fields: [message_id], references: [id], onDelete: SetNull)
+
+  @@index([company_id, created_at(sort: Desc)])
+  @@index([company_id, tool_name, created_at(sort: Desc)])
+  @@map("warden_tool_invocations")
+}
+
+model WardenAudit {
+  id              String   @id @default(uuid()) @db.Uuid
+  company_id      String   @db.Uuid
+  user_id         String   @db.Uuid
+  conversation_id String   @db.Uuid
+  message_id      String?  @db.Uuid
+  kind            String
+  tool_name       String?
+  ok              Boolean
+  latency_ms      Int
+  input_tokens    Int?
+  output_tokens   Int?
+  error_code      String?
+  created_at      DateTime @default(now())
+
+  company      Company      @relation(fields: [company_id], references: [id])
+  user         User         @relation(fields: [user_id], references: [id])
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  message      Message?     @relation(fields: [message_id], references: [id], onDelete: SetNull)
+
+  @@index([company_id, created_at(sort: Desc)])
+  @@index([company_id, user_id, created_at(sort: Desc)])
+  @@map("warden_audit")
+}
+
+// Modelo para Seguridad (Refresh Tokens)
+model RefreshToken {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  token_hash  String   @unique
+  expires_at  DateTime
+  revoked     Boolean  @default(false)
+  replaced_by String?  @db.Uuid
+  created_at  DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// Modelos para Rate Limiting y Seguridad
+model LoginAttempt {
+  id         String    @id @default(uuid()) @db.Uuid
+  ip         String
+  email      String
+  attempts   Int       @default(0)
+  lock_until DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@unique([ip, email])
+  @@map("login_attempts")
+}
+
+model SecurityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  event_type String   // e.g., "BRUTE_FORCE_LOCK", "SUSPICIOUS_ACTIVITY"
+  ip         String
+  email      String?
+  details    String?  @db.Text
+  created_at DateTime @default(now())
+
+  @@map("security_logs")
+}
+
+// ============================================================================
+// Operaciones (Cost Engine)
+// ============================================================================
+
+model Route {
+  id                     String   @id @default(uuid()) @db.Uuid
+  company_id             String   @db.Uuid
+  name                   String
+  origin                 String
+  destination            String
+  distance_km            Float
+  estimated_duration_min Int
+  active                 Boolean  @default(true)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  company                Company          @relation(fields: [company_id], references: [id])
+  route_tollbooths       RouteTollbooth[]
+  trips                  Trip[]
+
+  @@map("routes")
+}
+
+model Tollbooth {
+  id                String   @id @default(uuid()) @db.Uuid
+  company_id        String   @db.Uuid
+  name              String
+  cost_2_axles      Float
+  cost_3_axles      Float
+  cost_4_axles      Float
+  cost_5_axles      Float
+  cost_6_axles      Float
+  cost_7_plus_axles Float
+  active            Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  company           Company          @relation(fields: [company_id], references: [id])
+  route_tollbooths  RouteTollbooth[]
+
+  @@map("tollbooths")
+}
+
+model RouteTollbooth {
+  id           String   @id @default(uuid()) @db.Uuid
+  route_id     String   @db.Uuid
+  tollbooth_id String   @db.Uuid
+  order        Int
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  route        Route     @relation(fields: [route_id], references: [id], onDelete: Cascade)
+  tollbooth    Tollbooth @relation(fields: [tollbooth_id], references: [id], onDelete: Cascade)
+
+  @@unique([route_id, tollbooth_id])
+  @@map("route_tollbooths")
+}
+
+model Trip {
+  id             String     @id @default(uuid()) @db.Uuid
+  company_id     String     @db.Uuid
+  route_id       String     @db.Uuid
+  unit_id        String     @db.Uuid
+  operator_id    String     @db.Uuid
+  status         TripStatus @default(programado)
+  scheduled_date DateTime
+  departure_time DateTime?
+  arrival_time   DateTime?
+  estimated_cost Float?
+  actual_cost    Float?
+  notes          String?
+  entry_cost     Float?
+  cancellation_reason String?
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+
+  company        Company    @relation(fields: [company_id], references: [id])
+  route          Route      @relation(fields: [route_id], references: [id])
+  unit           Unit       @relation(fields: [unit_id], references: [id])
+  operator       Operator   @relation(fields: [operator_id], references: [id])
+  cost_detail    TripCostDetail?
+  history        TripStatusHistory[]
+
+  @@map("trips")
+}
+
+model TripCostDetail {
+  id                       String   @id @default(uuid()) @db.Uuid
+  trip_id                  String   @unique @db.Uuid
+  tollbooth_cost           Float    @default(0)
+  fuel_cost                Float    @default(0)
+  fuel_type                String?
+  extras_cost              Float    @default(0)
+  estimated_tollbooth_cost Float    @default(0)
+  estimated_fuel_cost      Float    @default(0)
+  estimated_extras_cost    Float    @default(0)
+
+  trip                     Trip     @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+
+  @@map("trip_cost_details")
+}
+
+model TripStatusHistory {
+  id                  String     @id @default(uuid()) @db.Uuid
+  trip_id             String     @db.Uuid
+  status              TripStatus
+  actor_id            String     @db.Uuid
+  cancellation_reason String?
+  created_at          DateTime   @default(now())
+
+  trip Trip @relation(fields: [trip_id], references: [id], onDelete: Cascade)
+
+  @@map("trip_status_history")
 }

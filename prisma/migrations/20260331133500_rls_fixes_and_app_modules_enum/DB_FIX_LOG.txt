@@ -1,0 +1,28 @@
+CORRECCIONES DE BASE DE DATOS - WARDAPP BACKEND
+FECHA: 2026-03-28
+
+PROBLEMAS SOLUCIONADOS:
+1. Error "operator does not exist: text = uuid" en consultas de Admin/Companies.
+2. Error de validación en políticas RLS (Row Level Security).
+3. Acceso denegado/Usuario Null debido a sensibilidad en emails.
+
+CAMBIOS REALIZADOS:
+
+--- SCHEMA DE BASE DE DATOS (PostgreSQL) ---
+- Se detectó que la tabla 'companies' tenía la columna 'id' como tipo TEXT, mientras que las tablas relacionadas (users, materials, etc) usaban 'company_id' como UUID.
+- ACCIÓN: Se ejecutó un ALTER TABLE para convertir 'companies.id' a tipo UUID de forma permanente:
+  ALTER TABLE "companies" ALTER COLUMN "id" TYPE uuid USING "id"::uuid;
+
+--- POLÍTICAS DE SEGURIDAD (RLS) ---
+- Las políticas de aislamiento por tenant fallaban al comparar tipos UUID con el contexto de sesión de texto.
+- ACCIÓN: Se actualizaron todas las políticas RLS ("tenant_isolation") para realizar la comparación convirtiendo explícitamente a texto:
+  USING (company_id::text = current_setting('app.current_company_id', true))
+- Tablas actualizadas: users, material_categories, materials, warehouse_config, inventory_movements.
+
+--- LÓGICA DE APLICACIÓN (Backend) ---
+- Se añadió .trim().toLowerCase() al email en el proceso de login para evitar errores por espacios o mayúsculas accidentales.
+- Se actualizó 'src/lib/prisma.ts' para incluir cast ::text en la función withTenant() al ejecutar set_config.
+
+NOTAS ADICIONALES:
+- El usuario lcortes02@gmail.com fue creado y sincronizado con los permisos de Super Admin y suscripción activa para pruebas.
+- Se restauró la seguridad de contraseñas mediante Bcrypt tras verificar que el problema era de tipos en la BD.

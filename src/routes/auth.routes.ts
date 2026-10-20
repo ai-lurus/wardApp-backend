@@ -3,30 +3,168 @@ import { z } from "zod";
 import * as authService from "../services/auth.service";
 import { authMiddleware } from "../middleware/auth";
 import { AppError } from "../middleware/errorHandler";
+import { loginGuard } from "../middleware/loginGuard";
+import * as securityService from "../services/security.service";
+import { registry, UserSchema } from "../lib/openapi";
 
 const router = Router();
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+// Schemas para OpenAPI
+const AuthResponseSchema = registry.register(
+  "AuthResponse",
+  z.object({
+    token: z.string(),
+    user: UserSchema,
+  })
+);
+
+// Documentación de rutas
+registry.registerPath({
+  method: "post",
+  path: "/auth/login",
+  summary: "Iniciar sesión",
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            email: z.string().email().openapi({ example: "admin@ward.io" }),
+            password: z.string().min(1).openapi({ example: "password123" }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Login exitoso",
+      content: { "application/json": { schema: AuthResponseSchema } },
+    },
+    401: { description: "Credenciales inválidas" },
+  },
 });
+
+const loginSchema = z.object({
+  email: z.email("Email inválido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+});
+
+// Helper: build consistent cookie options based on environment
+// In production/staging the frontend runs on a different Vercel subdomain,
+// so sameSite must be "none" (+ Secure) to allow cross-site cookie delivery.
+// In development sameSite: "lax" is sufficient (same-origin).
+function refreshCookieOptions() {
+  const isProd =
+    process.env.NODE_ENV === "production" ||
+    process.env.NODE_ENV === "staging";
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
+}
 
 router.post(
   "/login",
+  loginGuard,
   async (req: Request, res: Response, next: NextFunction) => {
+    let rawIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "0.0.0.0";
+    const requestIp = rawIp.includes(",") ? rawIp.split(",")[0].trim() : rawIp;
     try {
       const body = loginSchema.parse(req.body);
       const result = await authService.login(body.email, body.password);
-      res.json(result);
-    } catch (err) {
+      
+      await securityService.resetAttempts(requestIp, body.email);
+      
+      res.cookie("refreshToken", result.refreshToken, refreshCookieOptions());
+      
+      res.json({ token: result.token, user: result.user });
+    } catch (err: any) {
+      if (err instanceof AppError && err.statusCode === 401 && req.body?.email) {
+         await securityService.recordFailedAttempt(requestIp, req.body.email);
+      }
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
     }
   }
 );
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/refresh",
+  summary: "Refrescar token de acceso",
+  tags: ["Auth"],
+  responses: {
+    200: {
+      description: "Nuevo token generado",
+      content: { "application/json": { schema: z.object({ token: z.string() }) } },
+    },
+    401: { description: "Refresh token inválido o expirado" },
+  },
+});
+
+router.post("/refresh", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) throw new AppError(401, "No refresh token provided");
+
+    const result = await authService.processRefreshToken(token);
+
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOptions());
+
+    res.json({ token: result.token });
+  } catch (err) {
+    next(err);
+  }
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/auth/logout",
+  summary: "Cerrar sesión",
+  tags: ["Auth"],
+  responses: {
+    200: {
+      description: "Sesión cerrada exitosamente",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
+
+router.post("/logout", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (token) {
+      await authService.logout(token);
+    }
+    // Clear with matching options so the browser actually removes the cookie
+    res.clearCookie("refreshToken", refreshCookieOptions());
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/auth/me",
+  summary: "Obtener información del usuario actual",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Datos del usuario",
+      content: { "application/json": { schema: UserSchema } },
+    },
+    401: { description: "No autorizado" },
+  },
+});
 
 router.get(
   "/me",
@@ -41,9 +179,35 @@ router.get(
   }
 );
 
+registry.registerPath({
+  method: "patch",
+  path: "/auth/change-password",
+  summary: "Cambiar contraseña",
+  tags: ["Auth"],
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            currentPassword: z.string(),
+            newPassword: z.string().min(6),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Contraseña cambiada exitosamente",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
+
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(6),
+  currentPassword: z.string().min(1, "La contraseña actual es requerida"),
+  newPassword: z.string().min(6, "La nueva contraseña debe tener al menos 6 caracteres"),
 });
 
 router.patch(
@@ -56,7 +220,8 @@ router.patch(
       res.json({ message: "Contraseña actualizada" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -64,8 +229,30 @@ router.patch(
   }
 );
 
+registry.registerPath({
+  method: "post",
+  path: "/auth/forgot-password",
+  summary: "Solicitar recuperación de contraseña",
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({ email: z.string().email() }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Enlace enviado si el correo existe",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
+
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.email("Email inválido"),
 });
 
 router.post(
@@ -82,7 +269,8 @@ router.post(
       res.json({ message: "Si el correo existe, recibirás un enlace en breve" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
@@ -90,9 +278,34 @@ router.post(
   }
 );
 
+registry.registerPath({
+  method: "post",
+  path: "/auth/reset-password",
+  summary: "Restablecer contraseña con token",
+  tags: ["Auth"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            token: z.string(),
+            newPassword: z.string().min(6),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Contraseña restablecida exitosamente",
+      content: { "application/json": { schema: z.object({ message: z.string() }) } },
+    },
+  },
+});
+
 const resetPasswordSchema = z.object({
-  token: z.string().min(1),
-  newPassword: z.string().min(6),
+  token: z.string().min(1, "El token es requerido"),
+  newPassword: z.string().min(6, "La nueva contraseña debe tener al menos 6 caracteres"),
 });
 
 router.post(
@@ -104,7 +317,8 @@ router.post(
       res.json({ message: "Contraseña actualizada exitosamente" });
     } catch (err) {
       if (err instanceof z.ZodError) {
-        next(new AppError(400, "Invalid request body"));
+        const message = err.issues.map((e: any) => e.message).join(', ');
+        next(new AppError(400, message));
       } else {
         next(err);
       }
